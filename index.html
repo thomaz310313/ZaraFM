@@ -4,15 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zara FM | No Ar</title>
-    <!-- Fonte moderna e arredondada combinando com a arte -->
+    
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Ícones para o player -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --bg-color: #efa39a; /* Salmão da arte */
-            --primary-brown: #462c26; /* Marrom escuro do gato */
+            --bg-color: #efa39a; 
+            --primary-brown: #462c26; 
             --light-pink: #f7cac9;
             --white: #ffffff;
         }
@@ -122,7 +121,6 @@
             font-size: 1.2rem;
         }
 
-        /* Estilização customizada da barra de volume */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
@@ -152,19 +150,18 @@
 <body>
 
     <div class="container">
-        <!-- A imagem da Zara e da logo fica aqui -->
         <div class="logo-container">
-            <img src="zaralogo.jpeg" alt="Logo Zara FM">
+            <img src="3697.webp" alt="Logo Zara FM" onerror="this.style.display='none'">
         </div>
 
         <div class="status">
             <div class="live-dot" id="liveIndicator" style="display: none;"></div>
-            <span id="statusText">Rádio Offline</span>
+            <span id="statusText">Rádio Online</span>
         </div>
 
         <div class="player-controls">
             <button class="play-btn" id="playPauseBtn">
-                <i class="fas fa-play"></i>
+                <i class="fas fa-play" id="playIcon"></i>
             </button>
 
             <div class="volume-container">
@@ -175,65 +172,68 @@
         </div>
     </div>
 
-    <!-- O motor de áudio invisível -->
-    <!-- SUBSTITUA O LINK ABAIXO PELO SEU LINK DA CLOUDFLARE -->
-    <!-- O motor de áudio invisível -->
     <audio id="audioStream" preload="none"></audio>
-    
+
     <script>
         const audio = document.getElementById('audioStream');
         const playPauseBtn = document.getElementById('playPauseBtn');
+        const playIcon = document.getElementById('playIcon');
         const volumeSlider = document.getElementById('volumeSlider');
         const statusText = document.getElementById('statusText');
         const liveIndicator = document.getElementById('liveIndicator');
-        const icon = playPauseBtn.querySelector('i');
 
         let isPlaying = false;
 
         playPauseBtn.addEventListener('click', () => {
             if (isPlaying) {
-                // Pausar
+                // Comando de Pausa
                 audio.pause();
-                audio.removeAttribute('src'); // Mais seguro do que deixar em branco
-                audio.load(); // Reseta o player
+                audio.src = ""; // Corta a conexão com o túnel
                 
-                icon.classList.remove('fa-pause');
-                icon.classList.add('fa-play');
+                playIcon.className = 'fas fa-play';
                 statusText.innerText = "Pausado";
                 liveIndicator.style.display = "none";
                 isPlaying = false;
             } else {
-                // Tocar (O truque do anti-cache está aqui)
+                // Comando de Play (com sistema anticache embutido)
                 statusText.innerText = "Conectando...";
-                audio.src = "https://radio.zarafm.xyz/aovivo?nocache=" + new Date().getTime();
                 
-                // O .play() no HTML5 moderno é uma promessa, então tratamos ela assim:
-                audio.play().then(() => {
-                    icon.classList.remove('fa-play');
-                    icon.classList.add('fa-pause');
-                    statusText.innerText = "Ao Vivo";
-                    liveIndicator.style.display = "block";
-                    isPlaying = true;
-                }).catch((erro) => {
-                    console.log("Erro no navegador:", erro);
-                    statusText.innerText = "Clique novamente";
-                    isPlaying = false;
-                });
+                // Força o link real com um parâmetro de tempo para enganar o cache
+                const urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
+                audio.src = urlAoVivo;
+                
+                // Usa promise para evitar travamentos do navegador
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Tocou com sucesso
+                        playIcon.className = 'fas fa-pause';
+                        statusText.innerText = "Ao Vivo";
+                        liveIndicator.style.display = "block";
+                        isPlaying = true;
+                    }).catch((error) => {
+                        // Foi bloqueado
+                        console.error("Erro ao reproduzir:", error);
+                        statusText.innerText = "Erro. Tente novamente";
+                        playIcon.className = 'fas fa-play';
+                        isPlaying = false;
+                    });
+                }
             }
         });
 
-        // Controle de Volume em tempo real
+        // Controle de Volume
         volumeSlider.addEventListener('input', (e) => {
             audio.volume = e.target.value;
         });
 
-        // Se a Cloudflare derrubar, ele avisa no visual
+        // Captura de queda de conexão
         audio.addEventListener('error', () => {
             if (isPlaying) {
-                statusText.innerText = "Erro na Transmissão";
+                statusText.innerText = "Sinal Perdido";
                 liveIndicator.style.display = "none";
-                icon.classList.remove('fa-pause');
-                icon.classList.add('fa-play');
+                playIcon.className = 'fas fa-play';
                 isPlaying = false;
             }
         });
