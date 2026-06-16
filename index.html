@@ -334,18 +334,35 @@
 
         async function buscarNomeDaMusica() {
             if (!isPlaying) return;
+            
             try {
-                const resposta = await fetch('https://radio.zarafm.xyz/status-json.xsl');
+                // O ?nocache= com a hora obriga a Cloudflare a pegar o nome NOVO a cada 10 segundos
+                const urlStatus = 'https://radio.zarafm.xyz/status-json.xsl?nocache=' + new Date().getTime();
+                const resposta = await fetch(urlStatus);
                 const dados = await resposta.json();
-                let titulo = dados.icestats.source.title;
-                if (titulo) {
+                
+                let titulo = "";
+
+                // Verifica se o Icecast mandou como Objeto Único ou Array (Lista)
+                if (dados.icestats && dados.icestats.source) {
+                    if (Array.isArray(dados.icestats.source)) {
+                        titulo = dados.icestats.source[0].title; // Pega da primeira rádio da lista
+                    } else {
+                        titulo = dados.icestats.source.title;
+                    }
+                }
+                
+                // Só atualiza se o Icecast realmente tiver mandado um nome
+                if (titulo && titulo.trim() !== "") {
                     songTitleText.innerText = titulo;
                 } else {
                     songTitleText.innerText = "Zara FM - 106.9";
                 }
             } catch (erro) {
+                console.error("Erro ao buscar metadados:", erro);
                 songTitleText.innerText = "Transmissão Ao Vivo";
             }
+            
             setTimeout(buscarNomeDaMusica, 10000);
         }
     </script>
