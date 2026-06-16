@@ -192,35 +192,34 @@
 
         playPauseBtn.addEventListener('click', () => {
             if (isPlaying) {
+                // Pausar
                 audio.pause();
-                audio.src = ""; // Mata a conexão real para não gastar banda do seu PC à toa
+                audio.removeAttribute('src'); // Mais seguro do que deixar em branco
+                audio.load(); // Reseta o player
+                
                 icon.classList.remove('fa-pause');
                 icon.classList.add('fa-play');
                 statusText.innerText = "Pausado";
                 liveIndicator.style.display = "none";
+                isPlaying = false;
             } else {
-                // O TRUQUE DE MESTRE: Adiciona a hora exata no final do link.
-                // Isso engana o navegador, forçando ele a criar uma conexão 100% nova e limpa com o seu túnel, ignorando qualquer bloqueio.
+                // Tocar (O truque do anti-cache está aqui)
+                statusText.innerText = "Conectando...";
                 audio.src = "https://radio.zarafm.xyz/aovivo?nocache=" + new Date().getTime();
-                audio.play();
                 
-                icon.classList.remove('fa-play');
-                icon.classList.add('fa-pause');
-                statusText.innerText = "Ao Vivo";
-                liveIndicator.style.display = "block";
+                // O .play() no HTML5 moderno é uma promessa, então tratamos ela assim:
+                audio.play().then(() => {
+                    icon.classList.remove('fa-play');
+                    icon.classList.add('fa-pause');
+                    statusText.innerText = "Ao Vivo";
+                    liveIndicator.style.display = "block";
+                    isPlaying = true;
+                }).catch((erro) => {
+                    console.log("Erro no navegador:", erro);
+                    statusText.innerText = "Clique novamente";
+                    isPlaying = false;
+                });
             }
-            isPlaying = !isPlaying;
-        });
-            } else {
-                // Força o carregamento do stream mais recente ao dar play
-                audio.load();
-                audio.play();
-                icon.classList.remove('fa-play');
-                icon.classList.add('fa-pause');
-                statusText.innerText = "Ao Vivo";
-                liveIndicator.style.display = "block";
-            }
-            isPlaying = !isPlaying;
         });
 
         // Controle de Volume em tempo real
@@ -228,13 +227,15 @@
             audio.volume = e.target.value;
         });
 
-        // Tratamento de erros de conexão da rádio
+        // Se a Cloudflare derrubar, ele avisa no visual
         audio.addEventListener('error', () => {
-            statusText.innerText = "Erro na Transmissão";
-            liveIndicator.style.display = "none";
-            icon.classList.remove('fa-pause');
-            icon.classList.add('fa-play');
-            isPlaying = false;
+            if (isPlaying) {
+                statusText.innerText = "Erro na Transmissão";
+                liveIndicator.style.display = "none";
+                icon.classList.remove('fa-pause');
+                icon.classList.add('fa-play');
+                isPlaying = false;
+            }
         });
     </script>
 </body>
