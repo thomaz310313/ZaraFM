@@ -3,50 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zara FM 106.9 | Zarafm.xyz</title>
+    <title>Zara FM 106.9</title>
     <style>
         body {
-            background-color: #121212;
-            color: #00ffcc;
+            background-color: #050505;
+            color: #0f0;
             font-family: 'Courier New', Courier, monospace;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
             margin: 0;
+        }
+        .player-box {
+            border: 2px solid #0f0;
+            padding: 40px;
+            border-radius: 15px;
             text-align: center;
+            box-shadow: 0 0 20px #0f0, inset 0 0 20px #0f0;
+            background: rgba(0, 20, 0, 0.8);
+            width: 350px;
         }
         h1 {
-            font-size: 2.5em;
+            font-size: 2em;
+            text-shadow: 0 0 10px #0f0;
             margin-bottom: 5px;
-            text-shadow: 0 0 10px #00ffcc;
         }
         p {
-            font-size: 1.1em;
-            color: #aaaaaa;
-            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #ccc;
+            margin-bottom: 30px;
         }
-        .player-container {
+        button {
+            background-color: transparent;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px #0f0;
+        }
+        button:hover {
+            background-color: #0f0;
+            color: #000;
+            box-shadow: 0 0 30px #0f0;
+        }
+        .status {
             margin-top: 20px;
-            padding: 15px;
-            border: 2px solid #00ffcc;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
-            width: 90%;
-            max-width: 400px;
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+        input[type=range] {
+            width: 80%;
+            margin-top: 20px;
+            accent-color: #0f0;
         }
     </style>
 </head>
 <body>
 
-    <h1>📻 ZARA FM 106.9</h1>
-    <p>Direto de Abernéssia para o mundo.</p>
+    <div class="player-box">
+        <h1>📻 ZARA FM 106.9</h1>
+        <p>Direto de Abernéssia para o mundo.</p>
+        
+        <!-- O Player Oculto -->
+        <audio id="zaraAudio" crossorigin="anonymous">
+            <source src="LINK_DO_SEU_SERVIDOR_AQUI" type="audio/mpeg">
+        </audio>
 
-    <div class="player-container">
-        <!-- Cole o código iframe da Zeno.fm logo abaixo dessa linha -->
-        <p style="color: #fff;">[ O Player da rádio vai aparecer aqui ]</p>
+        <!-- Controles Customizados -->
+        <button id="playBtn" onclick="togglePlay()">▶ LIGAR RÁDIO</button>
+        <br>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5" onchange="mudarVolume(this.value)">
+        
+        <div class="status" id="statusText">Aguardando conexão...</div>
     </div>
+
+    <script>
+        var rádio = document.getElementById("zaraAudio");
+        var botão = document.getElementById("playBtn");
+        var statusMsg = document.getElementById("statusText");
+
+        // Define o volume inicial
+        rádio.volume = 0.5;
+
+        function togglePlay() {
+            if (rádio.paused) {
+                rádio.play();
+                botão.innerHTML = "⏸ PAUSAR RÁDIO";
+                statusMsg.innerHTML = "⚡ Transmissão Ao Vivo ⚡";
+            } else {
+                rádio.pause();
+                botão.innerHTML = "▶ LIGAR RÁDIO";
+                statusMsg.innerHTML = "Aguardando conexão...";
+            }
+        }
+
+        function mudarVolume(valor) {
+            rádio.volume = valor;
+        }
+    </script>
 
 </body>
 </html>
