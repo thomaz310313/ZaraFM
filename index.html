@@ -178,7 +178,7 @@
     <!-- O motor de áudio invisível -->
     <!-- SUBSTITUA O LINK ABAIXO PELO SEU LINK DA CLOUDFLARE -->
     <!-- O motor de áudio invisível -->
-    <audio id="audioStream" src="https://zarafm.xyz/aovivo" preload="none"
+    <audio id="audioStream" preload="none"></audio>
     
     <script>
         const audio = document.getElementById('audioStream');
@@ -193,10 +193,24 @@
         playPauseBtn.addEventListener('click', () => {
             if (isPlaying) {
                 audio.pause();
+                audio.src = ""; // Mata a conexão real para não gastar banda do seu PC à toa
                 icon.classList.remove('fa-pause');
                 icon.classList.add('fa-play');
                 statusText.innerText = "Pausado";
                 liveIndicator.style.display = "none";
+            } else {
+                // O TRUQUE DE MESTRE: Adiciona a hora exata no final do link.
+                // Isso engana o navegador, forçando ele a criar uma conexão 100% nova e limpa com o seu túnel, ignorando qualquer bloqueio.
+                audio.src = "https://radio.zarafm.xyz/aovivo?nocache=" + new Date().getTime();
+                audio.play();
+                
+                icon.classList.remove('fa-play');
+                icon.classList.add('fa-pause');
+                statusText.innerText = "Ao Vivo";
+                liveIndicator.style.display = "block";
+            }
+            isPlaying = !isPlaying;
+        });
             } else {
                 // Força o carregamento do stream mais recente ao dar play
                 audio.load();
