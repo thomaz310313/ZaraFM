@@ -1,0 +1,15 @@
+{
+  "name": "Zara FM",
+  "short_name": "ZaraFM",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#efa39a",
+  "theme_color": "#462c26",
+  "icons": [
+    {
+      "src": "zaralogo.png",
+      "sizes": "512x512",
+      "type": "image/webp"
+    }
+  ]
+}
