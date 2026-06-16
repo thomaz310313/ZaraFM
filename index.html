@@ -45,12 +45,24 @@
             border: 2px solid rgba(70, 44, 38, 0.1);
         }
 
+        .logo-container {
+            margin-bottom: 35px; /* Dá um respiro bem maior entre a logo e o texto "Ao Vivo" */
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
+
         .logo-container img {
-            width: 250px;
+            width: 100%;
+            max-width: 300px; /* Aumenta o limite para a arte ficar grandona e bonita */
             height: auto;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 10px 15px rgba(70, 44, 38, 0.3));
+            border-radius: 20px;
+            filter: drop-shadow(0 15px 25px rgba(70, 44, 38, 0.4)); /* Sombra de site premium */
+            transition: transform 0.3s ease;
+        }
+
+        .logo-container img:hover {
+            transform: scale(1.03); /* Dá uma leve aproximada na Zara quando passa o mouse */
         }
 
         .status {
