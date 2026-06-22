@@ -71,21 +71,27 @@
 
                 // Verifica se o Icecast mandou os dados
                 if (dados.icestats && dados.icestats.source) {
-                    // Pega a rádio certa (seja lista ou única)
                     let fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
                     
-                    // Puxa o título bruto que o BUTT mandou
-                    titulo = fonte.title || ""; 
+                    // O PULO DO GATO: Agora ele caça o nome dentro do metadata primeiro!
+                    if (fonte.metadata && fonte.metadata.x_icy_title) {
+                        titulo = fonte.metadata.x_icy_title;
+                    } else if (fonte.title) {
+                        titulo = fonte.title;
+                    }
 
                     if (titulo) {
-                        // 1. Mata o diretório (Remove tudo que vem antes da última barra \ ou /)
+                        // 1. Limpa horários e atalhos do ZaraRadio (separa pelo TAB e pega o último)
+                        titulo = titulo.split('\t').pop();
+
+                        // 2. Mata o diretório do Windows (Remove tudo antes da última barra)
                         titulo = titulo.split('\\').pop().split('/').pop();
                         
-                        // 2. Mata o "_spotdown" e as extensões de arquivo
-                        titulo = titulo.replace(/_spotdown/gi, "");
+                        // 3. Mata o "_spotdown.org", "_spotdown" e extensões de áudio
+                        titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "");
                         titulo = titulo.replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "");
                         
-                        // 3. Tira os espaços em branco sobrando e hífens perdidos nas pontas
+                        // 4. Limpa os espaços e hífens sobrando
                         titulo = titulo.trim().replace(/^-+|-+$/g, '');
                     }
                 }
@@ -100,6 +106,9 @@
                 console.error("Erro ao buscar metadados:", erro);
                 songTitleText.innerText = "Transmissão Ao Vivo";
             }
+
+            setTimeout(buscarNomeDaMusica, 10000);
+        }
 
             setTimeout(buscarNomeDaMusica, 10000);
         }
