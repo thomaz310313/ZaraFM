@@ -79,4 +79,181 @@
         .visualizer.active .bar:nth-child(3) { animation-delay: 0.2s; }
         .visualizer.active .bar:nth-child(4) { animation-delay: 0.3s; }
         @keyframes bounce { 0% { height: 5px; } 100% { height: 30px; } }
-        .volume-container { display: flex; align-items: center; gap: 10px; width:
+        .volume-container { display: flex; align-items: center; gap: 10px; width: 100%; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: var(--primary-brown); cursor: pointer; margin-top: -6px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: var(--light-pink); border-radius: 5px; }
+        .info-box { display: flex; flex-direction: column; gap: 20px; }
+        .card { background: var(--white); padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(70, 44, 38, 0.1); text-align: center; }
+        .card h2 { margin-bottom: 15px; font-size: 1.4rem; font-weight: 600; }
+        .card p { line-height: 1.6; opacity: 0.9; margin-bottom: 20px; font-size: 1rem; }
+        .btn-discord { display: inline-block; background-color: #5865F2; color: white; padding: 12px 25px; border-radius: 12px; text-decoration: none; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3); }
+        .btn-discord:hover { background-color: #4752C4; transform: translateY(-2px); }
+        .sponsor-card { background-color: var(--primary-brown); color: var(--white); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ZARA FM</h1>
+    </header>
+
+    <div class="main-wrapper">
+        <div class="player-box">
+            <div class="logo-container">
+                <img src="zaralogo.png" alt="Logo Zara FM">
+            </div>
+
+            <div class="status">
+                <div class="live-dot" id="liveIndicator" style="display: none;"></div>
+                <span id="statusText">Rádio Offline</span>
+            </div>
+
+            <div class="now-playing">
+                <p>🎵 Tocando Agora</p>
+                <h3 id="songTitle">Aguardando rádio...</h3>
+            </div>
+
+            <div class="player-controls">
+                <div class="play-row">
+                    <button class="play-btn" id="playPauseBtn">
+                        <span id="iconContainer">
+                            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>
+                        </span>
+                    </button>
+
+                    <div class="visualizer" id="visualizer">
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                    </div>
+                </div>
+
+                <div class="volume-container">
+                    <svg viewBox="0 0 24 24" width="24" height="24"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8">
+                    <svg viewBox="0 0 24 24" width="24" height="24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div class="card">
+                <h2>🎧 A Rádio Oficial</h2>
+                <p>Você está ouvindo a Zara FM! Transmitindo os melhores hits pop, agora online.</p>
+
+                <h2>💬 Participe</h2>
+                <p>Quer pedir uma música? Chame no Discord e mande sua sugestão de som ao vivo pra gente tocar.</p>
+                <a href="#" class="btn-discord">Pedir música (thokkj)</a>
+            </div>
+
+            <div class="card sponsor-card">
+                <h2>🍪 Patrocínio Oficial</h2>
+                <p>Esta transmissão conta com o apoio da <strong>Fabridoce®</strong>. Os melhores doces e bolos pra acompanhar a melhor rádio.</p>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioStream" preload="none"></audio>
+
+    <script>
+        const audio = document.getElementById('audioStream');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const iconContainer = document.getElementById('iconContainer');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const statusText = document.getElementById('statusText');
+        const liveIndicator = document.getElementById('liveIndicator');
+        const visualizer = document.getElementById('visualizer');
+        const songTitleText = document.getElementById('songTitle');
+
+        const playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
+        const pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+
+        let isPlaying = false;
+
+        playPauseBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                audio.pause();
+                audio.src = ""; 
+                iconContainer.innerHTML = playSvg;
+                statusText.innerText = "Pausado";
+                liveIndicator.style.display = "none";
+                visualizer.classList.remove('active');
+                isPlaying = false;
+            } else {
+                statusText.innerText = "Conectando...";
+                const urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
+                audio.src = urlAoVivo;
+
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        iconContainer.innerHTML = pauseSvg;
+                        statusText.innerText = "Ao Vivo";
+                        liveIndicator.style.display = "block";
+                        visualizer.classList.add('active');
+                        isPlaying = true;
+                        buscarNomeDaMusica();
+                    }).catch((error) => {
+                        console.error("Erro:", error);
+                        statusText.innerText = "Erro. Tente novamente";
+                        iconContainer.innerHTML = playSvg;
+                        isPlaying = false;
+                    });
+                }
+            }
+        });
+
+        volumeSlider.addEventListener('input', (e) => { audio.volume = e.target.value; });
+
+        audio.addEventListener('error', () => {
+            if (isPlaying) {
+                statusText.innerText = "Sinal Perdido";
+                liveIndicator.style.display = "none";
+                visualizer.classList.remove('active');
+                iconContainer.innerHTML = playSvg;
+                isPlaying = false;
+            }
+        });
+
+        async function buscarNomeDaMusica() {
+            if (!isPlaying) return;
+
+            try {
+                const urlStatus = 'https://radio.zarafm.xyz/status-json.xsl?nocache=' + new Date().getTime();
+                const resposta = await fetch(urlStatus);
+                const dados = await resposta.json();
+
+                let titulo = "";
+
+                if (dados.icestats && dados.icestats.source) {
+                    let fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
+                    
+                    if (fonte.metadata && fonte.metadata.x_icy_title) {
+                        titulo = fonte.metadata.x_icy_title;
+                    } else if (fonte.title) {
+                        titulo = fonte.title;
+                    }
+
+                    if (titulo) {
+                        titulo = titulo.split('\t').pop();
+                        titulo = titulo.split('\\').pop().split('/').pop();
+                        titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "");
+                        titulo = titulo.replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "");
+                        titulo = titulo.trim().replace(/^-+|-+$/g, '');
+                    }
+                }
+
+                if (titulo && titulo !== "") {
+                    songTitleText.innerText = titulo;
+                } else {
+                    songTitleText.innerText = "Zara FM - 106.9";
+                }
+            } catch (erro) {
+                console.error("Erro ao buscar metadados:", erro);
+                songTitleText.innerText = "Transmissão Ao Vivo";
+            }
+
+            setTimeout(buscarNomeDaMusica, 10000);
+        }
+    </script>
+</body>
+</html>
