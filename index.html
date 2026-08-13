@@ -87,8 +87,10 @@
         .card { background: var(--white); padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(70, 44, 38, 0.1); text-align: center; }
         .card h2 { margin-bottom: 15px; font-size: 1.4rem; font-weight: 600; }
         .card p { line-height: 1.6; opacity: 0.9; margin-bottom: 20px; font-size: 1rem; }
-        .btn-discord { display: inline-block; background-color: #5865F2; color: white; padding: 12px 25px; border-radius: 12px; text-decoration: none; font-weight: 600; transition: 0.3s; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3); }
-        .btn-discord:hover { background-color: #4752C4; transform: translateY(-2px); }
+        .input-pedido { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 12px; border: 2px solid var(--light-pink); outline: none; font-family: 'Fredoka', sans-serif; font-size: 1rem; color: var(--primary-brown); background: #fdf5f4; }
+        .input-pedido:focus { border-color: var(--primary-brown); }
+        .btn-enviar { width: 100%; background-color: var(--primary-brown); color: var(--white); padding: 12px; border-radius: 12px; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(70, 44, 38, 0.2); }
+        .btn-enviar:hover { background-color: #311f1a; transform: translateY(-2px); }
         .sponsor-card { background-color: var(--primary-brown); color: var(--white); }
     </style>
 </head>
@@ -140,9 +142,15 @@
                 <h2>🎧 A Rádio Oficial</h2>
                 <p>Você está ouvindo a Zara FM! Transmitindo os melhores hits pop, agora online.</p>
 
-                <h2>💬 Participe</h2>
-                <p>Quer pedir uma música? Chame no Discord e mande sua sugestão de som ao vivo pra gente tocar.</p>
-                <a href="#" class="btn-discord">Pedir música (thokkj)</a>
+                <h2>💬 Peça sua Música</h2>
+                <p style="font-size: 0.95rem; margin-bottom: 15px;">Mande sua sugestão e ela vai direto para o painel do estúdio!</p>
+                
+                <form id="formPedido">
+                    <input type="text" id="nomeOuvinte" class="input-pedido" placeholder="Seu Nome" required>
+                    <input type="text" id="nomeMusica" class="input-pedido" placeholder="Música e Artista" required>
+                    <button type="submit" id="btnEnviar" class="btn-enviar">Enviar Pedido 🎶</button>
+                </form>
+                <p id="mensagemStatus" style="margin-top: 12px; font-size: 0.9rem; font-weight: 600;"></p>
             </div>
 
             <div class="card sponsor-card">
@@ -254,6 +262,41 @@
 
             setTimeout(buscarNomeDaMusica, 10000);
         }
+
+        // Script de integração do formulário de pedidos com a API
+        document.getElementById('formPedido').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnEnviar');
+            const status = document.getElementById('mensagemStatus');
+            const ouvinte = document.getElementById('nomeOuvinte').value;
+            const musica = document.getElementById('nomeMusica').value;
+
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+            
+            try {
+                const resposta = await fetch('https://zararequests.discloud.app/pedir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ouvinte, musica })
+                });
+
+                if(resposta.ok) {
+                    status.innerText = "✅ Pedido enviado com sucesso!";
+                    status.style.color = "#2e7d32";
+                    this.reset();
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                status.innerText = "❌ Erro ao enviar, tente de novo.";
+                status.style.color = "#c62828";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Enviar Pedido 🎶";
+                setTimeout(() => { status.innerText = ""; }, 5000);
+            }
+        });
     </script>
 </body>
 </html>
