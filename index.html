@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-title" content="Zara FM">
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW falhou, mas a rádio segue viva:', err));
+            navigator.serviceWorker.register('sw.js').catch(() => {});
         }
     </script>
     
@@ -253,7 +253,22 @@
         const playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
         const pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
 
+        const urlLogoAbsoluta = 'https://zarafm.xyz/zaralogo.png';
+
         let isPlaying = false;
+
+        function atualizarBolhaCelular(nomeFaixa) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: nomeFaixa,
+                    artist: 'Zara FM',
+                    album: 'Ao Vivo',
+                    artwork: [
+                        { src: urlLogoAbsoluta, sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+            }
+        }
 
         playPauseBtn.addEventListener('click', () => {
             if (isPlaying) {
@@ -266,6 +281,8 @@
                 isPlaying = false;
             } else {
                 statusText.innerText = "Conectando...";
+                atualizarBolhaCelular("Conectando...");
+                
                 const urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
                 audio.src = urlAoVivo;
 
@@ -278,8 +295,7 @@
                         visualizer.classList.add('active');
                         isPlaying = true;
                         buscarNomeDaMusica();
-                    }).catch((error) => {
-                        console.error("Erro:", error);
+                    }).catch(() => {
                         statusText.innerText = "Erro. Tente novamente";
                         iconContainer.innerHTML = playSvg;
                         isPlaying = false;
@@ -330,24 +346,14 @@
 
                 if (titulo && titulo !== "") {
                     songTitleText.innerText = titulo;
-                    
-                    // Integração: API de Notificação de Mídia (Bolha do Celular)
-                    if ('mediaSession' in navigator) {
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: titulo,
-                            artist: 'Zara FM',
-                            album: 'Ao Vivo',
-                            artwork: [
-                                { src: 'zaralogo.png', sizes: '512x512', type: 'image/png' }
-                            ]
-                        });
-                    }
+                    atualizarBolhaCelular(titulo);
                 } else {
                     songTitleText.innerText = "Zara FM - 106.9";
+                    atualizarBolhaCelular("Zara FM - 106.9");
                 }
             } catch (erro) {
-                console.error("Erro ao buscar metadados:", erro);
                 songTitleText.innerText = "Transmissão Ao Vivo";
+                atualizarBolhaCelular("Transmissão Ao Vivo");
             }
 
             setTimeout(buscarNomeDaMusica, 10000);
