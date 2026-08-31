@@ -2,13 +2,24 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Carregando Zara FM...</title>
-    <script>
-        var versaoCache = new Date().getTime();
-        window.location.replace('app.html?v=' + versaoCache);
-    </script>
+    <title>Zara FM | A Rádio mais felina de todas!</title>
 </head>
 <body>
-    <p>Sintonizando na Zara FM...</p>
+    <script>
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'app.html?v=' + new Date().getTime(), true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    document.open();
+                    document.write(xhr.responseText);
+                    document.close();
+                } else {
+                    document.write("Erro ao carregar a Zara FM. Tente atualizar a página.");
+                }
+            }
+        };
+        xhr.send();
+    </script>
 </body>
 </html>
