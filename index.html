@@ -5,41 +5,18 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <link rel="manifest" href="manifest.json?v=2">
+    <link rel="manifest" href="manifest.json?v=3">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Zara FM">
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js?v=2').then(function(reg) {
+            navigator.serviceWorker.register('sw.js?v=3').then(function(reg) {
                 reg.update();
             }).catch(function() {});
         }
     </script>
-    var versaoAtualSite = "0.27";
-
-var xhrVersao = new XMLHttpRequest();
-xhrVersao.open('GET', 'version.json?t=' + new Date().getTime(), true);
-xhrVersao.onreadystatechange = function() {
-    if (xhrVersao.readyState === 4 && xhrVersao.status === 200) {
-        try {
-            var remoto = JSON.parse(xhrVersao.responseText);
-            if (remoto.version !== versaoAtualSite) {
-                if ('caches' in window) {
-                    caches.keys().then(function(nomes) {
-                        for (var i = 0; i < nomes.length; i++) {
-                            caches.delete(nomes[i]);
-                        }
-                    });
-                }
-                localStorage.clear();
-                window.location.reload(true);
-            }
-        } catch(e) {}
-    }
-};
-xhrVersao.send();
-                                              
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zara FM | A Rádio mais felina de todas!</title>
@@ -60,7 +37,7 @@ xhrVersao.send();
             background-image: radial-gradient(var(--light-pink) 1.5px, transparent 1.5px);
             background-size: 24px 24px; 
             min-height: 100vh;
-            padding-bottom: 50px;
+            padding-bottom: 70px;
         }
 
         header {
@@ -184,6 +161,23 @@ xhrVersao.send();
         }
         .btn-enviar:hover { filter: brightness(1.12); transform: translateY(-2px); }
 
+        /* Badge de Versão Flutuante (Acima do rodapé absoluto) */
+        #version-badge {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(70, 44, 38, 0.85);
+            color: #ffffff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            z-index: 998;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+            letter-spacing: 0.5px;
+        }
+
         #dvd-screensaver {
             display: none; 
             position: fixed;
@@ -205,13 +199,13 @@ xhrVersao.send();
 <body>
 
     <header>
-        <h1>ZARA FM</h1>
+        <h1>ZaraFM</h1>
     </header>
 
     <div class="main-wrapper">
         <div class="player-box">
             <div class="logo-container">
-                <img src="zaralogo.png?v=2" alt="Logo Zara FM">
+                <img src="zaralogo.png?v=3" alt="Logo Zara FM">
             </div>
 
             <div class="status">
@@ -251,7 +245,7 @@ xhrVersao.send();
                 <p>Você está ouvindo a Zara FM! Transmitindo os melhores hits pop, agora online.</p>
 
                 <h2>💬 Peça sua Música</h2>
-                <p style="font-size: 0.95rem; margin-bottom: 15px;">Mande sua sugestão e ela vai direto para o painel do estúdio!</p>
+                <p style="font-size: 0.95rem; margin-bottom: 15px;">Mande sua sugestão e ela vai direto pro painel do estúdio!</p>
                 
                 <form id="formPedido">
                     <input type="text" id="nomeOuvinte" class="input-pedido" placeholder="Seu Nome" required>
@@ -263,13 +257,44 @@ xhrVersao.send();
         </div>
     </div>
 
+    <!-- Badge flutuante de versão -->
+    <div id="version-badge">v0.28 • Atualizado</div>
+
     <div id="dvd-screensaver">
-        <img id="dvd-logo" src="zaralogo.png?v=2" alt="ZaraFM Logo">
+        <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
     </div>
 
     <audio id="audioStream" preload="none"></audio>
 
     <script>
+        var versaoLocalSite = "0.28";
+        var badgeVersion = document.getElementById('version-badge');
+
+        var xhrVer = new XMLHttpRequest();
+        xhrVer.open('GET', 'version.json?t=' + new Date().getTime(), true);
+        xhrVer.onreadystatechange = function() {
+            if (xhrVer.readyState === 4 && xhrVer.status === 200) {
+                try {
+                    var dadosVersao = JSON.parse(xhrVer.responseText);
+                    if (dadosVersao.version !== versaoLocalSite) {
+                        badgeVersion.innerText = "Atualizando...";
+                        if ('caches' in window) {
+                            caches.keys().then(function(names) {
+                                for (var i = 0; i < names.length; i++) {
+                                    caches.delete(names[i]);
+                                }
+                            });
+                        }
+                        localStorage.clear();
+                        setTimeout(function() {
+                            window.location.reload(true);
+                        }, 1000);
+                    }
+                } catch(e) {}
+            }
+        };
+        xhrVer.send();
+
         var audio = document.getElementById('audioStream');
         var playPauseBtn = document.getElementById('playPauseBtn');
         var iconContainer = document.getElementById('iconContainer');
@@ -282,7 +307,7 @@ xhrVersao.send();
         var playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
         var pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
 
-        var urlLogoAbsoluta = 'https://zarafm.xyz/zaralogo.png?v=2';
+        var urlLogoAbsoluta = 'https://zarafm.xyz/zaralogo.png?v=3';
         var tituloOriginal = "Zara FM | A Rádio mais felina de todas!";
         var isPlaying = false;
 
@@ -298,7 +323,6 @@ xhrVersao.send();
                     ]
                 });
 
-                // Trava o Chrome para ele não sobrescrever com o domínio
                 try {
                     navigator.mediaSession.setActionHandler('play', function() {
                         if (!isPlaying) playPauseBtn.click();
@@ -322,7 +346,7 @@ xhrVersao.send();
                 isPlaying = false;
             } else {
                 statusText.innerText = "Conectando...";
-                atualizarBolhaCelular("Conectando..."); // Força a bolha a nascer certa
+                atualizarBolhaCelular("Conectando...");
                 
                 var urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
                 audio.src = urlAoVivo;
@@ -351,7 +375,6 @@ xhrVersao.send();
                 }
             }
         });
-
 
         volumeSlider.addEventListener('input', function(e) { 
             audio.volume = e.target.value; 
