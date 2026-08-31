@@ -16,7 +16,30 @@
             }).catch(function() {});
         }
     </script>
-    
+    var versaoAtualSite = "0.27";
+
+var xhrVersao = new XMLHttpRequest();
+xhrVersao.open('GET', 'version.json?t=' + new Date().getTime(), true);
+xhrVersao.onreadystatechange = function() {
+    if (xhrVersao.readyState === 4 && xhrVersao.status === 200) {
+        try {
+            var remoto = JSON.parse(xhrVersao.responseText);
+            if (remoto.version !== versaoAtualSite) {
+                if ('caches' in window) {
+                    caches.keys().then(function(nomes) {
+                        for (var i = 0; i < nomes.length; i++) {
+                            caches.delete(nomes[i]);
+                        }
+                    });
+                }
+                localStorage.clear();
+                window.location.reload(true);
+            }
+        } catch(e) {}
+    }
+};
+xhrVersao.send();
+                                              
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Zara FM | A Rádio mais felina de todas!</title>
