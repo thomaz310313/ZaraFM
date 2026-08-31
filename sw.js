@@ -1,17 +1,13 @@
-var CACHE_NAME = 'zarafm-v0.27';
-
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function(e) {
     self.skipWaiting();
 });
 
-self.addEventListener('activate', function(event) {
-    event.waitUntil(
+self.addEventListener('activate', function(e) {
+    e.waitUntil(
         caches.keys().then(function(cacheNames) {
             return Promise.all(
                 cacheNames.map(function(cacheName) {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
+                    return caches.delete(cacheName);
                 })
             );
         }).then(function() {
@@ -20,12 +16,6 @@ self.addEventListener('activate', function(event) {
     );
 });
 
-self.addEventListener('fetch', function(event) {
-    if (event.request.mode === 'navigate' || event.request.destination === 'document') {
-        event.respondWith(
-            fetch(event.request).catch(function() {
-                return caches.match(event.request);
-            })
-        );
-    }
+self.addEventListener('fetch', function(e) {
+    e.respondWith(fetch(e.request));
 });
