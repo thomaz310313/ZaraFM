@@ -1,13 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <link rel="manifest" href="manifest.json">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <link rel="manifest" href="manifest.json?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Zara FM">
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
+            navigator.serviceWorker.register('sw.js?v=2').then(function(reg) {
+                reg.update();
+            }).catch(function() {});
         }
     </script>
     
@@ -182,7 +188,7 @@
     <div class="main-wrapper">
         <div class="player-box">
             <div class="logo-container">
-                <img src="zaralogo.png" alt="Logo Zara FM">
+                <img src="zaralogo.png?v=2" alt="Logo Zara FM">
             </div>
 
             <div class="status">
@@ -235,29 +241,30 @@
     </div>
 
     <div id="dvd-screensaver">
-        <img id="dvd-logo" src="zaralogo.png" alt="ZaraFM Logo">
+        <img id="dvd-logo" src="zaralogo.png?v=2" alt="ZaraFM Logo">
     </div>
 
     <audio id="audioStream" preload="none"></audio>
 
     <script>
-        const audio = document.getElementById('audioStream');
-        const playPauseBtn = document.getElementById('playPauseBtn');
-        const iconContainer = document.getElementById('iconContainer');
-        const volumeSlider = document.getElementById('volumeSlider');
-        const statusText = document.getElementById('statusText');
-        const liveIndicator = document.getElementById('liveIndicator');
-        const visualizer = document.getElementById('visualizer');
-        const songTitleText = document.getElementById('songTitle');
+        var audio = document.getElementById('audioStream');
+        var playPauseBtn = document.getElementById('playPauseBtn');
+        var iconContainer = document.getElementById('iconContainer');
+        var volumeSlider = document.getElementById('volumeSlider');
+        var statusText = document.getElementById('statusText');
+        var liveIndicator = document.getElementById('liveIndicator');
+        var visualizer = document.getElementById('visualizer');
+        var songTitleText = document.getElementById('songTitle');
 
-        const playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
-        const pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+        var playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
+        var pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
 
-        const urlLogoAbsoluta = 'https://zarafm.xyz/zaralogo.png';
-
-        let isPlaying = false;
+        var urlLogoAbsoluta = 'https://zarafm.xyz/zaralogo.png?v=2';
+        var tituloOriginal = "Zara FM | A Rádio mais felina de todas!";
+        var isPlaying = false;
 
         function atualizarBolhaCelular(nomeFaixa) {
+            document.title = nomeFaixa + " - Zara FM"; 
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: nomeFaixa,
@@ -270,7 +277,7 @@
             }
         }
 
-        playPauseBtn.addEventListener('click', () => {
+        playPauseBtn.addEventListener('click', function() {
             if (isPlaying) {
                 audio.pause();
                 audio.src = ""; 
@@ -278,133 +285,146 @@
                 statusText.innerText = "Pausado";
                 liveIndicator.style.display = "none";
                 visualizer.classList.remove('active');
+                document.title = tituloOriginal;
                 isPlaying = false;
             } else {
                 statusText.innerText = "Conectando...";
                 atualizarBolhaCelular("Conectando...");
                 
-                const urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
+                var urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
                 audio.src = urlAoVivo;
 
-                const playPromise = audio.play();
+                var playPromise = audio.play();
                 if (playPromise !== undefined) {
-                    playPromise.then(() => {
+                    playPromise.then(function() {
                         iconContainer.innerHTML = pauseSvg;
                         statusText.innerText = "Ao Vivo";
                         liveIndicator.style.display = "block";
                         visualizer.classList.add('active');
                         isPlaying = true;
                         buscarNomeDaMusica();
-                    }).catch(() => {
+                    }).catch(function() {
                         statusText.innerText = "Erro. Tente novamente";
                         iconContainer.innerHTML = playSvg;
                         isPlaying = false;
                     });
+                } else {
+                    iconContainer.innerHTML = pauseSvg;
+                    statusText.innerText = "Ao Vivo";
+                    liveIndicator.style.display = "block";
+                    visualizer.classList.add('active');
+                    isPlaying = true;
+                    buscarNomeDaMusica();
                 }
             }
         });
 
-        volumeSlider.addEventListener('input', (e) => { audio.volume = e.target.value; });
+        volumeSlider.addEventListener('input', function(e) { 
+            audio.volume = e.target.value; 
+        });
 
-        audio.addEventListener('error', () => {
+        audio.addEventListener('error', function() {
             if (isPlaying) {
                 statusText.innerText = "Sinal Perdido";
                 liveIndicator.style.display = "none";
                 visualizer.classList.remove('active');
                 iconContainer.innerHTML = playSvg;
+                document.title = tituloOriginal;
                 isPlaying = false;
             }
         });
 
-        async function buscarNomeDaMusica() {
+        function buscarNomeDaMusica() {
             if (!isPlaying) return;
 
-            try {
-                const urlStatus = 'https://radio.zarafm.xyz/status-json.xsl?nocache=' + new Date().getTime();
-                const resposta = await fetch(urlStatus);
-                const dados = await resposta.json();
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://radio.zarafm.xyz/status-json.xsl?nocache=' + new Date().getTime(), true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var dados = JSON.parse(xhr.responseText);
+                            var titulo = "";
 
-                let titulo = "";
+                            if (dados.icestats && dados.icestats.source) {
+                                var fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
+                                
+                                if (fonte.metadata && fonte.metadata.x_icy_title) {
+                                    titulo = fonte.metadata.x_icy_title;
+                                } else if (fonte.title) {
+                                    titulo = fonte.title;
+                                }
 
-                if (dados.icestats && dados.icestats.source) {
-                    let fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
-                    
-                    if (fonte.metadata && fonte.metadata.x_icy_title) {
-                        titulo = fonte.metadata.x_icy_title;
-                    } else if (fonte.title) {
-                        titulo = fonte.title;
+                                if (titulo) {
+                                    titulo = titulo.split('\t').pop();
+                                    titulo = titulo.split('\\').pop().split('/').pop();
+                                    titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "");
+                                    titulo = titulo.replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "");
+                                    titulo = titulo.trim().replace(/^-+|-+$/g, '');
+                                }
+                            }
+
+                            if (titulo && titulo !== "") {
+                                songTitleText.innerText = titulo;
+                                atualizarBolhaCelular(titulo);
+                            } else {
+                                songTitleText.innerText = "Zara FM - 106.9";
+                                atualizarBolhaCelular("Zara FM - 106.9");
+                            }
+                        } catch (erro) {
+                            songTitleText.innerText = "Transmissão Ao Vivo";
+                            atualizarBolhaCelular("Transmissão Ao Vivo");
+                        }
                     }
-
-                    if (titulo) {
-                        titulo = titulo.split('\t').pop();
-                        titulo = titulo.split('\\').pop().split('/').pop();
-                        titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "");
-                        titulo = titulo.replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "");
-                        titulo = titulo.trim().replace(/^-+|-+$/g, '');
-                    }
+                    setTimeout(buscarNomeDaMusica, 10000);
                 }
-
-                if (titulo && titulo !== "") {
-                    songTitleText.innerText = titulo;
-                    atualizarBolhaCelular(titulo);
-                } else {
-                    songTitleText.innerText = "Zara FM - 106.9";
-                    atualizarBolhaCelular("Zara FM - 106.9");
-                }
-            } catch (erro) {
-                songTitleText.innerText = "Transmissão Ao Vivo";
-                atualizarBolhaCelular("Transmissão Ao Vivo");
-            }
-
-            setTimeout(buscarNomeDaMusica, 10000);
+            };
+            xhr.send();
         }
 
-        document.getElementById('formPedido').addEventListener('submit', async function(e) {
+        document.getElementById('formPedido').addEventListener('submit', function(e) {
             e.preventDefault();
-            const btn = document.getElementById('btnEnviar');
-            const status = document.getElementById('mensagemStatus');
-            const ouvinte = document.getElementById('nomeOuvinte').value;
-            const musica = document.getElementById('nomeMusica').value;
+            var btn = document.getElementById('btnEnviar');
+            var status = document.getElementById('mensagemStatus');
+            var ouvinte = document.getElementById('nomeOuvinte').value;
+            var musica = document.getElementById('nomeMusica').value;
 
             btn.disabled = true;
             btn.innerText = "Enviando...";
             
-            try {
-                const resposta = await fetch('https://zararequests.discloud.app/pedir', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ouvinte, musica })
-                });
-
-                if(resposta.ok) {
-                    status.innerText = "✅ Pedido enviado com sucesso!";
-                    status.style.color = "#2e7d32";
-                    this.reset();
-                } else {
-                    throw new Error();
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://zararequests.discloud.app/pedir', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        status.innerText = "✅ Pedido enviado com sucesso!";
+                        status.style.color = "#2e7d32";
+                        document.getElementById('formPedido').reset();
+                    } else {
+                        status.innerText = "❌ Erro ao enviar, tente de novo.";
+                        status.style.color = "#c62828";
+                    }
+                    btn.disabled = false;
+                    btn.innerText = "Enviar Pedido 🎶";
+                    setTimeout(function() { status.innerText = ""; }, 5000);
                 }
-            } catch (err) {
-                status.innerText = "❌ Erro ao enviar, tente de novo.";
-                status.style.color = "#c62828";
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Enviar Pedido 🎶";
-                setTimeout(() => { status.innerText = ""; }, 5000);
-            }
+            };
+            xhr.send(JSON.stringify({ ouvinte: ouvinte, musica: musica }));
         });
 
-        const screensaver = document.getElementById('dvd-screensaver');
-        const logo = document.getElementById('dvd-logo');
-        let timeoutDvd;
-        let x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5;
-        let animationId;
+        var screensaver = document.getElementById('dvd-screensaver');
+        var logo = document.getElementById('dvd-logo');
+        var timeoutDvd;
+        var x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5;
+        var animationId;
 
         function resetTimerDvd() {
             screensaver.style.display = 'none'; 
             cancelAnimationFrame(animationId); 
             clearTimeout(timeoutDvd);
             
-            timeoutDvd = setTimeout(() => {
+            timeoutDvd = setTimeout(function() {
                 screensaver.style.display = 'block'; 
                 x = Math.random() * (window.innerWidth - logo.clientWidth);
                 y = Math.random() * (window.innerHeight - logo.clientHeight);
@@ -413,10 +433,10 @@
         }
 
         function animarLogo() {
-            const screenW = window.innerWidth;
-            const screenH = window.innerHeight;
-            const logoW = logo.clientWidth;
-            const logoH = logo.clientHeight;
+            var screenW = window.innerWidth;
+            var screenH = window.innerHeight;
+            var logoW = logo.clientWidth;
+            var logoH = logo.clientHeight;
 
             x += dirX * speed;
             y += dirY * speed;
