@@ -53,7 +53,6 @@
         }
         @media (max-width: 768px) { .main-wrapper { grid-template-columns: 1fr; } }
 
-        /* Estilo Vidro Avançado + Super Arredondado */
         .player-box, .card {
             position: relative;
             background: rgba(255, 255, 255, 0.35) !important;
@@ -65,8 +64,7 @@
             border: 1px solid rgba(255, 255, 255, 0.4) !important;
             text-align: center;
         }
-
-        /* Reflexo de luz superior no vidro */
+        
         .player-box::before, .card::before {
             content: "";
             position: absolute;
@@ -156,6 +154,23 @@
             text-shadow: 0 1px 1px rgba(0,0,0,0.2);
         }
         .btn-enviar:hover { filter: brightness(1.12); transform: translateY(-2px); }
+
+        #dvd-screensaver {
+            display: none; 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: black;
+            z-index: 9999; 
+            overflow: hidden;
+        }
+        #dvd-logo {
+            position: absolute;
+            width: 200px; 
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.3));
+        }
     </style>
 </head>
 <body>
@@ -217,6 +232,10 @@
                 <p id="mensagemStatus" style="margin-top: 12px; font-size: 0.9rem; font-weight: 600;"></p>
             </div>
         </div>
+    </div>
+
+    <div id="dvd-screensaver">
+        <img id="dvd-logo" src="zaralogo.png" alt="ZaraFM Logo">
     </div>
 
     <audio id="audioStream" preload="none"></audio>
@@ -311,6 +330,18 @@
 
                 if (titulo && titulo !== "") {
                     songTitleText.innerText = titulo;
+                    
+                    // Integração: API de Notificação de Mídia (Bolha do Celular)
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: titulo,
+                            artist: 'Zara FM',
+                            album: 'Ao Vivo',
+                            artwork: [
+                                { src: 'zaralogo.png', sizes: '512x512', type: 'image/png' }
+                            ]
+                        });
+                    }
                 } else {
                     songTitleText.innerText = "Zara FM - 106.9";
                 }
@@ -355,6 +386,50 @@
                 setTimeout(() => { status.innerText = ""; }, 5000);
             }
         });
+
+        const screensaver = document.getElementById('dvd-screensaver');
+        const logo = document.getElementById('dvd-logo');
+        let timeoutDvd;
+        let x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5;
+        let animationId;
+
+        function resetTimerDvd() {
+            screensaver.style.display = 'none'; 
+            cancelAnimationFrame(animationId); 
+            clearTimeout(timeoutDvd);
+            
+            timeoutDvd = setTimeout(() => {
+                screensaver.style.display = 'block'; 
+                x = Math.random() * (window.innerWidth - logo.clientWidth);
+                y = Math.random() * (window.innerHeight - logo.clientHeight);
+                animarLogo(); 
+            }, 180000); 
+        }
+
+        function animarLogo() {
+            const screenW = window.innerWidth;
+            const screenH = window.innerHeight;
+            const logoW = logo.clientWidth;
+            const logoH = logo.clientHeight;
+
+            x += dirX * speed;
+            y += dirY * speed;
+
+            if (x + logoW >= screenW || x <= 0) dirX *= -1;
+            if (y + logoH >= screenH || y <= 0) dirY *= -1;
+
+            logo.style.left = x + 'px';
+            logo.style.top = y + 'px';
+
+            animationId = requestAnimationFrame(animarLogo);
+        }
+
+        window.addEventListener('mousemove', resetTimerDvd);
+        window.addEventListener('keydown', resetTimerDvd);
+        window.addEventListener('touchstart', resetTimerDvd);
+        window.addEventListener('scroll', resetTimerDvd);
+
+        resetTimerDvd();
     </script>
 </body>
 </html>
