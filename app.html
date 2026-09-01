@@ -29,7 +29,6 @@
             --primary-brown: #462c26; 
             --light-pink: #f7cac9;
             --white: #ffffff;
-            --accent-red: #ff4757;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Fredoka', sans-serif; }
         
@@ -89,7 +88,7 @@
         }
 
         .status { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .live-dot { width: 12px; height: 12px; background-color: var(--accent-red); border-radius: 50%; animation: pulse 1.5s infinite; }
+        .live-dot { width: 12px; height: 12px; background-color: #ff4757; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 71, 87, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); } }
 
         .now-playing { 
@@ -104,52 +103,23 @@
         .now-playing p { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; opacity: 0.75; }
         .now-playing h3 { font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Ações Dinâmicas (Compartilhar e Coração) */
-        .actions-row {
-            display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 25px;
-        }
-
-        .btn-share {
-            background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.6);
-            color: var(--primary-brown); padding: 10px 18px; border-radius: 20px;
-            font-size: 0.95rem; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; gap: 8px; transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
+        /* --- NOVOS ELEMENTOS: COMPARTILHAR E CORAÇÃO --- */
+        .actions-row { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .btn-share { background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.6); color: var(--primary-brown); padding: 10px 18px; border-radius: 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .btn-share:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); }
         .btn-share svg { fill: var(--primary-brown); width: 18px; height: 18px; }
-
-        .heart-morph-btn {
-            width: 42px; height: 42px; background: rgba(255,255,255,0.5);
-            border: 1px solid rgba(255,255,255,0.6); border-radius: 50%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            cursor: pointer; position: relative; transition: 0.3s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
+        .heart-morph-btn { width: 42px; height: 42px; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.6); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .heart-morph-btn:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); }
-        .heart-morph-btn span {
-            width: 20px; height: 3px; background-color: var(--primary-brown);
-            border-radius: 3px; position: absolute;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-        }
+        .heart-morph-btn span { width: 20px; height: 3px; background-color: var(--primary-brown); border-radius: 3px; position: absolute; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         .heart-morph-btn span:nth-child(1) { transform: translateY(-6px); }
         .heart-morph-btn span:nth-child(2) { transform: translateY(0); }
         .heart-morph-btn span:nth-child(3) { transform: translateY(6px); }
-
-        .heart-morph-btn.active { border-color: var(--accent-red); background: rgba(255,255,255,0.9); }
+        .heart-morph-btn.active { border-color: #ff4757; background: rgba(255,255,255,0.9); }
         .heart-morph-btn.active span:nth-child(2) { opacity: 0; transform: scale(0); }
-        .heart-morph-btn.active span:nth-child(1), .heart-morph-btn.active span:nth-child(3) {
-            width: 14px; height: 22px; background: transparent; border: 3px solid var(--accent-red);
-            top: 7px;
-        }
-        .heart-morph-btn.active span:nth-child(1) {
-            border-bottom: 0; border-right: 0; border-radius: 14px 14px 0 0;
-            transform: rotate(-45deg) translate(-1px, 4px); left: 10px;
-        }
-        .heart-morph-btn.active span:nth-child(3) {
-            border-bottom: 0; border-left: 0; border-radius: 14px 14px 0 0;
-            transform: rotate(45deg) translate(1px, 4px); right: 10px;
-        }
+        .heart-morph-btn.active span:nth-child(1), .heart-morph-btn.active span:nth-child(3) { width: 14px; height: 22px; background: transparent; border: 3px solid #ff4757; top: 7px; }
+        .heart-morph-btn.active span:nth-child(1) { border-bottom: 0; border-right: 0; border-radius: 14px 14px 0 0; transform: rotate(-45deg) translate(-1px, 4px); left: 10px; }
+        .heart-morph-btn.active span:nth-child(3) { border-bottom: 0; border-left: 0; border-radius: 14px 14px 0 0; transform: rotate(45deg) translate(1px, 4px); right: 10px; }
+        /* ----------------------------------------------- */
 
         .player-controls {
             display: flex; flex-direction: column; gap: 20px; align-items: center;
@@ -158,7 +128,7 @@
             border: 1px solid rgba(255,255,255,0.3);
         }
 
-        .play-row { display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%; }
+        .play-row { display: flex; align-items: center; justify-content: center; gap: 15px; width: 100%; }
         .play-btn {
             background: linear-gradient(180deg, #5c413b 0%, var(--primary-brown) 100%);
             border: 1px solid rgba(255,255,255,0.25); 
@@ -170,12 +140,14 @@
         .play-btn:active { transform: scale(0.94); }
         .play-btn svg { fill: #ffffff !important; }
 
-        /* Canvas Substuindo as Barras CSS */
-        #audioCanvas { width: 60px; height: 40px; display: none; }
-        #audioCanvas.active { display: block; }
+        .volume-container svg { fill: var(--primary-brown) !important; }
+
+        /* --- CSS DO NOVO VISUALIZADOR CANVAS --- */
+        .visualizer-canvas { display: none; margin-left: 10px; }
+        .visualizer-canvas.active { display: block; }
+        /* --------------------------------------- */
 
         .volume-container { display: flex; align-items: center; gap: 12px; width: 100%; }
-        .volume-container svg { fill: var(--primary-brown) !important; }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: var(--primary-brown); cursor: pointer; margin-top: -7px; box-shadow: 0 3px 6px rgba(0,0,0,0.25); }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: rgba(255,255,255,0.6); border-radius: 5px; border: 1px solid rgba(255,255,255,0.4); }
@@ -261,12 +233,12 @@
                 <h3 id="songTitle">Aguardando rádio...</h3>
             </div>
 
+            <!-- NOVOS BOTÕES -->
             <div class="actions-row">
                 <button id="shareBtn" class="btn-share">
                     <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
                     <span>Compartilhar</span>
                 </button>
-
                 <div id="heartBtn" class="heart-morph-btn" title="Curtir Rádio">
                     <span></span><span></span><span></span>
                 </div>
@@ -280,7 +252,8 @@
                         </span>
                     </button>
 
-                    <canvas id="audioCanvas" width="80" height="40"></canvas>
+                    <!-- NOVO CANVAS SUBSTITUINDO AS BARRAS ANTIGAS -->
+                    <canvas class="visualizer-canvas" id="visualizer" width="80" height="40"></canvas>
                 </div>
 
                 <div class="volume-container">
@@ -315,7 +288,7 @@
         <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
     </div>
 
-    <audio id="audioStream" crossorigin="anonymous" preload="none"></audio>
+    <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
         var versaoLocalSite = "0.30";
@@ -352,7 +325,54 @@
         var volumeSlider = document.getElementById('volumeSlider');
         var statusText = document.getElementById('statusText');
         var liveIndicator = document.getElementById('liveIndicator');
+        var visualizer = document.getElementById('visualizer');
         var songTitleText = document.getElementById('songTitle');
+
+        var canvasCtx = visualizer ? visualizer.getContext('2d') : null;
+        var audioCtx, analyser, mediaSource, dataArray, animationIdCanvas;
+        
+        function initAudioVisualizer() {
+            if (audioCtx) return;
+            try {
+                var AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                analyser = audioCtx.createAnalyser();
+                mediaSource = audioCtx.createMediaElementSource(audio);
+                mediaSource.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 64; 
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+            } catch (e) { console.log("Web Audio API bloqueada.", e); }
+        }
+
+        function drawVisualizer() {
+            if (!isPlaying || !analyser) return;
+            animationIdCanvas = requestAnimationFrame(drawVisualizer);
+            analyser.getByteFrequencyData(dataArray);
+            canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
+            var numBars = 6;
+            var barWidth = (visualizer.width / numBars) - 2;
+            var x = 0;
+            for (var i = 0; i < numBars; i++) {
+                var barHeight = (dataArray[i] / 255) * visualizer.height; 
+                if (barHeight < 2) barHeight = 2; 
+                canvasCtx.fillStyle = '#462c26';
+                canvasCtx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
+                x += barWidth + 2;
+            }
+        }
+        
+        document.getElementById('shareBtn').addEventListener('click', function() {
+            var m = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM";
+            var t = "Tô ouvindo " + m + " na Zara FM! 🐾";
+            var u = "https://zarafm.xyz";
+            if (navigator.share) { navigator.share({ title: 'Zara FM', text: t, url: u }).catch(function(){}); } 
+            else { navigator.clipboard.writeText(t + " - " + u); var s = this.querySelector('span'); var old = s.innerText; s.innerText = "Copiado!"; setTimeout(function(){ s.innerText = old; }, 2000); }
+        });
+
+        document.getElementById('heartBtn').addEventListener('click', function() {
+            this.classList.toggle('active');
+        });
 
         var playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
         var pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
@@ -361,73 +381,215 @@
         var tituloOriginal = "Zara FM | A Rádio mais felina de todas!";
         var isPlaying = false;
 
-        // Variáveis do Canvas (Web Audio API)
-        var audioCtx, analyser, source, dataArray, bufferLength;
-        var canvas = document.getElementById('audioCanvas');
-        var canvasCtx = canvas.getContext('2d');
-        var visualizerId;
-
-        function initAudioVisualizer() {
-            if (audioCtx) return;
-            try {
-                var AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-                analyser = audioCtx.createAnalyser();
-                source = audioCtx.createMediaElementSource(audio);
-                source.connect(analyser);
-                analyser.connect(audioCtx.destination);
-                
-                analyser.fftSize = 64; 
-                bufferLength = analyser.frequencyBinCount;
-                dataArray = new Uint8Array(bufferLength);
-            } catch (e) {
-                console.log("Web Audio API bloqueada.");
-            }
-        }
-
-        function drawVisualizer() {
-            if (!isPlaying || !analyser) return;
-            visualizerId = requestAnimationFrame(drawVisualizer);
-            
-            analyser.getByteFrequencyData(dataArray);
-            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            var numBars = 6;
-            var barWidth = (canvas.width / numBars) - 2;
-            var barHeight;
-            var x = 0;
-
-            for (var i = 0; i < numBars; i++) {
-                barHeight = (dataArray[i] / 255) * canvas.height; 
-                if (barHeight < 2) barHeight = 2; 
-
-                canvasCtx.fillStyle = '#462c26';
-                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                x += barWidth + 2;
-            }
-        }
-
-        // Compartilhar
-        document.getElementById('shareBtn').addEventListener('click', function() {
-            var musicaAtual = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM";
-            var texto = "Tô ouvindo " + musicaAtual + " na Zara FM! 🐾";
-            var url = "https://zarafm.xyz";
-
-            if (navigator.share) {
-                navigator.share({ title: 'Zara FM', text: texto, url: url }).catch(function(){});
-            } else {
-                navigator.clipboard.writeText(texto + " - " + url);
-                var span = this.querySelector('span');
-                var txtAntigo = span.innerText;
-                span.innerText = "Copiado!";
-                setTimeout(function() { span.innerText = txtAntigo; }, 2000);
-            }
-        });
-
-        // Coração Animado
-        document.getElementById('heartBtn').addEventListener('click', function() {
-            this.classList.toggle('active');
-        });
-
         function atualizarBolhaCelular(nomeFaixa) {
-          
+            document.title = nomeFaixa + " - Zara FM"; 
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: nomeFaixa,
+                    artist: 'Zara FM',
+                    album: 'Ao Vivo',
+                    artwork: [
+                        { src: urlLogoAbsoluta, sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+
+                try {
+                    navigator.mediaSession.setActionHandler('play', function() {
+                        if (!isPlaying) playPauseBtn.click();
+                    });
+                    navigator.mediaSession.setActionHandler('pause', function() {
+                        if (isPlaying) playPauseBtn.click();
+                    });
+                } catch(err) {}
+            }
+        }
+
+        playPauseBtn.addEventListener('click', function() {
+            if (isPlaying) {
+                audio.pause();
+                audio.src = ""; 
+                iconContainer.innerHTML = playSvg;
+                statusText.innerText = "Pausado";
+                liveIndicator.style.display = "none";
+                visualizer.classList.remove('active');
+                cancelAnimationFrame(animationIdCanvas);
+                document.title = tituloOriginal;
+                isPlaying = false;
+            } else {
+                initAudioVisualizer(); 
+                if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+
+                statusText.innerText = "Conectando...";
+                atualizarBolhaCelular("Conectando...");
+                
+                var urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
+                audio.src = urlAoVivo;
+
+                var playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(function() {
+                        iconContainer.innerHTML = pauseSvg;
+                        statusText.innerText = "Ao Vivo";
+                        liveIndicator.style.display = "block";
+                        visualizer.classList.add('active');
+                        isPlaying = true;
+                        drawVisualizer();
+                        buscarNomeDaMusica();
+                    }).catch(function() {
+                        statusText.innerText = "Erro. Tente novamente";
+                        iconContainer.innerHTML = playSvg;
+                        isPlaying = false;
+                    });
+                } else {
+                    iconContainer.innerHTML = pauseSvg;
+                    statusText.innerText = "Ao Vivo";
+                    liveIndicator.style.display = "block";
+                    visualizer.classList.add('active');
+                    isPlaying = true;
+                    drawVisualizer();
+                    buscarNomeDaMusica();
+                }
+            }
+        });
+
+        volumeSlider.addEventListener('input', function(e) { 
+            audio.volume = e.target.value; 
+        });
+
+        audio.addEventListener('error', function() {
+            if (isPlaying) {
+                statusText.innerText = "Sinal Perdido";
+                liveIndicator.style.display = "none";
+                visualizer.classList.remove('active');
+                cancelAnimationFrame(animationIdCanvas);
+                iconContainer.innerHTML = playSvg;
+                document.title = tituloOriginal;
+                isPlaying = false;
+            }
+        });
+
+        function buscarNomeDaMusica() {
+            if (!isPlaying) return;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://radio.zarafm.xyz/status-json.xsl?nocache=' + new Date().getTime(), true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var dados = JSON.parse(xhr.responseText);
+                            var titulo = "";
+
+                            if (dados.icestats && dados.icestats.source) {
+                                var fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
+                                
+                                if (fonte.metadata && fonte.metadata.x_icy_title) {
+                                    titulo = fonte.metadata.x_icy_title;
+                                } else if (fonte.title) {
+                                    titulo = fonte.title;
+                                }
+
+                                if (titulo) {
+                                    titulo = titulo.split('\t').pop();
+                                    titulo = titulo.split('\\').pop().split('/').pop();
+                                    titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "");
+                                    titulo = titulo.replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "");
+                                    titulo = titulo.trim().replace(/^-+|-+$/g, '');
+                                }
+                            }
+
+                            if (titulo && titulo !== "") {
+                                songTitleText.innerText = titulo;
+                                atualizarBolhaCelular(titulo);
+                            } else {
+                                songTitleText.innerText = "Zara FM";
+                                atualizarBolhaCelular("Zara FM");
+                            }
+                        } catch (erro) {
+                            songTitleText.innerText = "Transmissão Ao Vivo";
+                            atualizarBolhaCelular("Transmissão Ao Vivo");
+                        }
+                    }
+                    setTimeout(buscarNomeDaMusica, 20000);
+                }
+            };
+            xhr.send();
+        }
+
+        document.getElementById('formPedido').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('btnEnviar');
+            var status = document.getElementById('mensagemStatus');
+            var ouvinte = document.getElementById('nomeOuvinte').value;
+            var musica = document.getElementById('nomeMusica').value;
+
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://zararequests.discloud.app/pedir', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        status.innerText = "✅ Pedido enviado com sucesso!";
+                        status.style.color = "#2e7d32";
+                        document.getElementById('formPedido').reset();
+                    } else {
+                        status.innerText = "❌ Erro ao enviar, tente de novo.";
+                        status.style.color = "#c62828";
+                    }
+                    btn.disabled = false;
+                    btn.innerText = "Enviar Pedido 🎶";
+                    setTimeout(function() { status.innerText = ""; }, 5000);
+                }
+            };
+            xhr.send(JSON.stringify({ ouvinte: ouvinte, musica: musica }));
+        });
+
+        var screensaver = document.getElementById('dvd-screensaver');
+        var logo = document.getElementById('dvd-logo');
+        var timeoutDvd;
+        var x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5;
+        var animationId;
+
+        function resetTimerDvd() {
+            screensaver.style.display = 'none'; 
+            cancelAnimationFrame(animationId); 
+            clearTimeout(timeoutDvd);
+            
+            timeoutDvd = setTimeout(function() {
+                screensaver.style.display = 'block'; 
+                x = Math.random() * (window.innerWidth - logo.clientWidth);
+                y = Math.random() * (window.innerHeight - logo.clientHeight);
+                animarLogo(); 
+            }, 180000); 
+        }
+
+        function animarLogo() {
+            var screenW = window.innerWidth;
+            var screenH = window.innerHeight;
+            var logoW = logo.clientWidth;
+            var logoH = logo.clientHeight;
+
+            x += dirX * speed;
+            y += dirY * speed;
+
+            if (x + logoW >= screenW || x <= 0) dirX *= -1;
+            if (y + logoH >= screenH || y <= 0) dirY *= -1;
+
+            logo.style.left = x + 'px';
+            logo.style.top = y + 'px';
+
+            animationId = requestAnimationFrame(animarLogo);
+        }
+
+        window.addEventListener('mousemove', resetTimerDvd);
+        window.addEventListener('keydown', resetTimerDvd);
+        window.addEventListener('touchstart', resetTimerDvd);
+        window.addEventListener('scroll', resetTimerDvd);
+
+        resetTimerDvd();
+    </script>
+</body>
+</html>
