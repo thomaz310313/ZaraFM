@@ -10,6 +10,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Zara FM">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js?reload=' + new Date().getTime()).then(function(reg) {
@@ -103,7 +106,7 @@
         .now-playing p { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; opacity: 0.75; }
         .now-playing h3 { font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .actions-row { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .actions-row { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .btn-share { background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.6); color: var(--primary-brown); padding: 10px 18px; border-radius: 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .btn-share:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); }
         .btn-share svg { fill: var(--primary-brown); width: 18px; height: 18px; }
@@ -161,6 +164,25 @@
             text-shadow: 0 1px 1px rgba(0,0,0,0.2);
         }
         .btn-enviar:hover { filter: brightness(1.12); transform: translateY(-2px); }
+
+        /* Estilos dos Modais (Miaumory) */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 1; transition: 0.3s;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            padding: 30px; border-radius: 26px; text-align: center; max-width: 90%;
+            width: 360px; box-shadow: 0 20px 40px rgba(70, 44, 38, 0.2);
+            border: 1px solid rgba(255,255,255,0.6); color: var(--primary-brown);
+        }
+        .modal-content h2 { margin-bottom: 15px; font-size: 1.5rem; }
+        .modal-content p { font-size: 1rem; opacity: 0.9; line-height: 1.5; margin-bottom: 20px; }
+        #qrCodeContainer { background: #fff; padding: 15px; border-radius: 15px; display: inline-block; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
 
         #version-badge {
             position: fixed;
@@ -223,6 +245,12 @@
                     <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
                     <span>Compartilhar</span>
                 </button>
+
+                <!-- NOVO BOTÃO: Miaumory -->
+                <button id="miaumoryBtn" class="btn-share" title="Salvar Miaumory">
+                    <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2z"/></svg>
+                    <span>Fluffytag</span>
+                </button>
             </div>
 
             <div class="player-controls">
@@ -262,7 +290,26 @@
         </div>
     </div>
 
-    <div id="version-badge">v0.31 • Atualizado</div>
+    <!-- MODAL: Gerar Miaumory -->
+    <div id="miaumoryGenerateModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h2>🐾 Sua Fluffytag</h2>
+            <p>Essa é a sua Fluffytag! Salve ela pra eternizar esse momento, ou compartilhe o momento pra sempre!</p>
+            <div id="qrCodeContainer"></div>
+            <button id="closeMiaumoryBtn" class="btn-enviar" style="margin-top: 10px;">Fechar</button>
+        </div>
+    </div>
+
+    <!-- MODAL: Ler Miaumory -->
+    <div id="miaumoryReadModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h2>🎵 Fluffytag encontrado!</h2>
+            <p id="miaumoryReadText"></p>
+            <button id="closeReadBtn" class="btn-enviar" style="margin-top: 10px;">Ouvir a Rádio</button>
+        </div>
+    </div>
+
+    <div id="version-badge">v0.32 • Atualizado</div>
 
     <div id="dvd-screensaver">
         <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
@@ -271,7 +318,7 @@
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.31";
+        var versaoLocalSite = "0.32";
         var badgeVersion = document.getElementById('version-badge');
 
         var xhrVer = new XMLHttpRequest();
@@ -298,6 +345,32 @@
             }
         };
         xhrVer.send();
+
+        window.addEventListener('load', function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var miauParam = urlParams.get('miau');
+            
+            if (miauParam) {
+                try {
+                    var decoded = decodeURIComponent(atob(miauParam));
+                    var parts = decoded.split('|');
+                    if (parts.length === 2) {
+                        var m = parts[0];
+                        var dt = parts[1];
+                        document.getElementById('miaumoryReadText').innerHTML = "No dia <strong>" + dt + "</strong>, alguém estava escutando:<br><br><strong>" + m + "</strong><br><br>na ZaraFM!";
+                        document.getElementById('miaumoryReadModal').style.display = 'flex';
+                    }
+                } catch(e) { console.log("Fluffytag inválido ou corrompido."); }
+                
+                var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({path:newUrl}, '', newUrl);
+            }
+        });
+
+        document.getElementById('closeReadBtn').addEventListener('click', function() {
+            document.getElementById('miaumoryReadModal').style.display = 'none';
+        });
+
 
         var audio = document.getElementById('audioStream');
         var playPauseBtn = document.getElementById('playPauseBtn');
@@ -351,7 +424,6 @@
                     var porcentagem = Math.pow(valorFrequencia / 255, 1.5); 
                     barHeight = porcentagem * visualizer.height; 
                 } else {
-                    // Fallback automático para TV/Smartphones bloqueados: dança orgânica por tempo
                     var tempo = Date.now() / 180;
                     barHeight = (Math.sin(tempo + (i * 0.8)) + 1) * 0.5 * (visualizer.height * 0.85) + 4;
                 }
@@ -364,6 +436,7 @@
             }
         }
         
+        // --- BOTÃO COMPARTILHAR ---
         document.getElementById('shareBtn').addEventListener('click', function() {
             var m = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM";
             var t = "Tô ouvindo " + m + " na Zara FM! 🐾";
@@ -371,6 +444,38 @@
             if (navigator.share) { navigator.share({ title: 'Zara FM', text: t, url: u }).catch(function(){}); } 
             else { navigator.clipboard.writeText(t + " - " + u); var s = this.querySelector('span'); var old = s.innerText; s.innerText = "Copiado!"; setTimeout(function(){ s.innerText = old; }, 2000); }
         });
+
+        document.getElementById('miaumoryBtn').addEventListener('click', function() {
+            var musicaAtual = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "A programação da Zara FM";
+            
+            var now = new Date();
+            var dataFormatada = now.toLocaleDateString('pt-BR') + " às " + now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            
+            var rawData = musicaAtual + "|" + dataFormatada;
+            var encodedData = btoa(encodeURIComponent(rawData));
+            
+            var finalUrl = "https://zarafm.xyz/?fluffy=" + encodedData;
+
+            var qrContainer = document.getElementById('qrCodeContainer');
+            qrContainer.innerHTML = ""; 
+            new QRCode(qrContainer, {
+                text: finalUrl,
+                width: 180,
+                height: 180,
+                colorDark : "#462c26",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            // Mostra o Modal na tela
+            document.getElementById('miaumoryGenerateModal').style.display = 'flex';
+        });
+
+        // Fechar Modal do QR Code
+        document.getElementById('closeMiaumoryBtn').addEventListener('click', function() {
+            document.getElementById('miaumoryGenerateModal').style.display = 'none';
+        });
+
 
         var playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
         var pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
