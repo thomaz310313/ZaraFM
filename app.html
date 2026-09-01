@@ -103,23 +103,10 @@
         .now-playing p { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; opacity: 0.75; }
         .now-playing h3 { font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* --- NOVOS ELEMENTOS: COMPARTILHAR E CORAÇÃO --- */
         .actions-row { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 25px; }
         .btn-share { background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.6); color: var(--primary-brown); padding: 10px 18px; border-radius: 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .btn-share:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); }
         .btn-share svg { fill: var(--primary-brown); width: 18px; height: 18px; }
-        .heart-morph-btn { width: 42px; height: 42px; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.6); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; position: relative; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .heart-morph-btn:hover { background: rgba(255,255,255,0.8); transform: translateY(-2px); }
-        .heart-morph-btn span { width: 20px; height: 3px; background-color: var(--primary-brown); border-radius: 3px; position: absolute; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        .heart-morph-btn span:nth-child(1) { transform: translateY(-6px); }
-        .heart-morph-btn span:nth-child(2) { transform: translateY(0); }
-        .heart-morph-btn span:nth-child(3) { transform: translateY(6px); }
-        .heart-morph-btn.active { border-color: #ff4757; background: rgba(255,255,255,0.9); }
-        .heart-morph-btn.active span:nth-child(2) { opacity: 0; transform: scale(0); }
-        .heart-morph-btn.active span:nth-child(1), .heart-morph-btn.active span:nth-child(3) { width: 14px; height: 22px; background: transparent; border: 3px solid #ff4757; top: 7px; }
-        .heart-morph-btn.active span:nth-child(1) { border-bottom: 0; border-right: 0; border-radius: 14px 14px 0 0; transform: rotate(-45deg) translate(-1px, 4px); left: 10px; }
-        .heart-morph-btn.active span:nth-child(3) { border-bottom: 0; border-left: 0; border-radius: 14px 14px 0 0; transform: rotate(45deg) translate(1px, 4px); right: 10px; }
-        /* ----------------------------------------------- */
 
         .player-controls {
             display: flex; flex-direction: column; gap: 20px; align-items: center;
@@ -142,10 +129,8 @@
 
         .volume-container svg { fill: var(--primary-brown) !important; }
 
-        /* --- CSS DO NOVO VISUALIZADOR CANVAS --- */
         .visualizer-canvas { display: none; margin-left: 10px; }
         .visualizer-canvas.active { display: block; }
-        /* --------------------------------------- */
 
         .volume-container { display: flex; align-items: center; gap: 12px; width: 100%; }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
@@ -348,17 +333,33 @@
         function drawVisualizer() {
             if (!isPlaying || !analyser) return;
             animationIdCanvas = requestAnimationFrame(drawVisualizer);
+            
             analyser.getByteFrequencyData(dataArray);
             canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
+            
             var numBars = 6;
             var barWidth = (visualizer.width / numBars) - 2;
             var x = 0;
+            
+            // Lendo frequências separadas: [Grave, Médio-Grave, Médio, Médio-Agudo, Agudo, Agudo+]
+            var bandas = [1, 3, 6, 10, 16, 22]; 
+
             for (var i = 0; i < numBars; i++) {
-                var barHeight = (dataArray[i] / 255) * visualizer.height; 
-                if (barHeight < 2) barHeight = 2; 
+                var valorFrequencia = dataArray[bandas[i]]; 
+                
+                // Essa curva matemática (1.5) aumenta o contraste. 
+                // Evita que as barras fiquem todas medianas.
+                var porcentagem = Math.pow(valorFrequencia / 255, 1.5); 
+                
+                var barHeight = porcentagem * visualizer.height; 
+                if (barHeight < 2) barHeight = 2; // Altura mínima
+                
                 canvasCtx.fillStyle = '#462c26';
                 canvasCtx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
                 x += barWidth + 2;
+            }
+        }
+
             }
         }
         
