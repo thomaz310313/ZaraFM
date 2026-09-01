@@ -11,8 +11,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Zara FM">
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- CryptoJS (Segurança) e QRCode Generator (Matriz Crua) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 
     <script>
     if ('serviceWorker' in navigator) {
@@ -178,7 +179,8 @@
             background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
             padding: 30px; border-radius: 26px; text-align: center; max-width: 90%;
-            width: 360px; box-shadow: 0 20px 40px rgba(70, 44, 38, 0.2);
+            width: 360px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(70, 44, 38, 0.2);
             border: 1px solid rgba(255,255,255,0.6); color: var(--primary-brown);
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -187,81 +189,49 @@
         .gear-btn:hover { transform: rotate(90deg); }
         
         .modal-content p { font-size: 0.95rem; opacity: 0.9; line-height: 1.4; margin-bottom: 15px; }
-        #qrCodeContainer { background: #fff; padding: 15px; border-radius: 15px; display: inline-block; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        .settings-panel { background: rgba(70,44,38,0.06); padding: 12px; border-radius: 14px; margin-bottom: 15px; display: none; text-align: left; }
+        #qrCodeCanvas { 
+            background: #fff; padding: 10px; border-radius: 18px; 
+            display: inline-block; margin-bottom: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            max-width: 100%; height: auto;
+        }
+        
+        .settings-panel { background: rgba(70,44,38,0.06); padding: 15px; border-radius: 14px; margin-bottom: 15px; display: none; text-align: left; }
         .settings-panel label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 5px; }
-        .settings-panel input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(70,44,38,0.2); text-align: center; font-size: 1.1rem; letter-spacing: 4px; }
+        .settings-panel input, .settings-panel select { 
+            width: 100%; padding: 10px; border-radius: 10px; 
+            border: 1px solid rgba(70,44,38,0.2); font-family: 'Fredoka', sans-serif; 
+            font-size: 0.95rem; color: var(--primary-brown); margin-bottom: 12px;
+            background: rgba(255,255,255,0.7);
+        }
+        .settings-panel input[type=file] { font-size: 0.8rem; padding: 6px; }
 
         /* Estilo do Easter Egg do Gru */
         #gru-easter-egg {
-            display: none;
-            position: fixed;
-            bottom: 60px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            padding: 12px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(70, 44, 38, 0.25);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            z-index: 999;
-            text-align: center;
-            max-width: 210px;
+            display: none; position: fixed; bottom: 60px; right: 15px;
+            background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            padding: 12px; border-radius: 20px; box-shadow: 0 10px 30px rgba(70, 44, 38, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.8); z-index: 999; text-align: center; max-width: 210px;
             animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        #gru-easter-egg img {
-            width: 100%;
-            border-radius: 12px;
-            margin-bottom: 6px;
-        }
-        #gru-easter-egg p {
-            font-size: 0.72rem;
-            color: var(--primary-brown);
-            font-weight: 600;
-            line-height: 1.25;
-        }
-        @keyframes popUp {
-            0% { transform: scale(0); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        #gru-easter-egg img { width: 100%; border-radius: 12px; margin-bottom: 6px; }
+        #gru-easter-egg p { font-size: 0.72rem; color: var(--primary-brown); font-weight: 600; line-height: 1.25; }
+        @keyframes popUp { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
         #version-badge {
-            position: fixed;
-            bottom: 15px;
-            right: 15px;
-            background: rgba(70, 44, 38, 0.85);
-            color: #ffffff;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            z-index: 998;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.2);
-            letter-spacing: 0.5px;
-            cursor: pointer;
-            transition: 0.2s;
+            position: fixed; bottom: 15px; right: 15px; background: rgba(70, 44, 38, 0.85);
+            color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; z-index: 998;
+            backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2);
+            letter-spacing: 0.5px; cursor: pointer; transition: 0.2s;
         }
         #version-badge:hover { filter: brightness(1.2); }
 
         #dvd-screensaver {
-            display: none; 
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: black;
-            z-index: 9999; 
-            overflow: hidden;
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: black; z-index: 9999; overflow: hidden;
         }
-        #dvd-logo {
-            position: absolute;
-            width: 200px; 
-            filter: drop-shadow(0 0 15px rgba(255,255,255,0.3));
-        }
+        #dvd-logo { position: absolute; width: 200px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); }
     </style>
 </head>
 <body>
@@ -305,7 +275,6 @@
                             <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>
                         </span>
                     </button>
-
                     <canvas class="visualizer-canvas" id="visualizer" width="80" height="40"></canvas>
                 </div>
 
@@ -324,7 +293,6 @@
 
                 <h2>💬 Peça sua Música</h2>
                 <p style="font-size: 0.95rem; margin-bottom: 15px;">Mande sua sugestão e ela vai direto pro painel do estúdio!</p>
-                
                 <form id="formPedido">
                     <input type="text" id="nomeOuvinte" class="input-pedido" placeholder="Seu Nome" required>
                     <input type="text" id="nomeMusica" class="input-pedido" placeholder="Música e Artista" required>
@@ -334,38 +302,52 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- MODAL: Gerar Fluffytag Customizada -->
     <div id="miaumoryGenerateModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>🐾 Sua Fluffytag</h2>
-                <button id="gearToggleBtn" class="gear-btn" title="Configurar Criptografia">⚙️</button>
+                <button id="gearToggleBtn" class="gear-btn" title="Configurar e Estilizar">⚙️</button>
             </div>
             
             <div id="settingsPanel" class="settings-panel">
-                <label for="pinCodeInput">Bloquear com PIN (4 dígitos):</label>
-                <input type="password" id="pinCodeInput" maxlength="4" placeholder="••••">
+                <label for="customSongInput">Música Personalizada (Opcional):</label>
+                <input type="text" id="customSongInput" placeholder="Deixe em branco para a música atual">
+
+                <label for="customImageInput">Foto nos quadradinhos (Opcional):</label>
+                <input type="file" id="customImageInput" accept="image/*">
+
+                <label for="qrColorSelect">Cor (Caso não tenha foto):</label>
+                <select id="qrColorSelect">
+                    <option value="#462c26">Marrom Zara</option>
+                    <option value="#ff4757">Vermelho Pop</option>
+                    <option value="#1a1a1a">Preto Escuro</option>
+                </select>
+
+                <label for="pinCodeInput">Criptografar (PIN 4 dígitos):</label>
+                <input type="password" id="pinCodeInput" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 4px;">
             </div>
 
-            <p>Essa é a sua Fluffytag. Salve ela pra eternizar o momento ou compartilhe com alguém!</p>
-            <div id="qrCodeContainer"></div>
+            <p>Essa é a sua Fluffytag! Salve ela pra eternizar esse momento ou compartilhe com outros!</p>
+            
+            <canvas id="qrCodeCanvas" width="220" height="220"></canvas>
             
             <button id="shareQrBtn" class="btn-share" style="width: 100%; justify-content: center; margin-bottom: 10px;">
                 <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                <span>Compartilhar Link da Fluffytag</span>
+                <span>Compartilhar Link</span>
             </button>
 
             <button id="closeMiaumoryBtn" class="btn-enviar">Fechar</button>
         </div>
     </div>
 
-    <!-- MODAL: Digitar Senha para Descriptografar -->
     <div id="miaumoryPinModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2>🔒 Tag Criptografada</h2>
-            <p>Esta Fluffytag está protegida. Digite a senha para abrir:</p>
+            <p>Esta Fluffytag está protegida por criptografia. Digite a senha para abrir:</p>
             <input type="password" id="pinUnlockInput" maxlength="4" class="input-pedido" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" placeholder="••••">
-            <button id="unlockPinBtn" class="btn-enviar">Desbloquear 🔓</button>
+            <button id="unlockPinBtn" class="btn-enviar">Descriptografar 🔓</button>
             <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta ou corrompida!</p>
         </div>
     </div>
@@ -378,7 +360,7 @@
         </div>
     </div>
 
-    <div id="version-badge">v0.37 • Atualizado</div>
+    <div id="version-badge">v0.39 • Atualizado</div>
 
     <div id="dvd-screensaver">
         <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
@@ -387,7 +369,7 @@
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.37";
+        var versaoLocalSite = "0.39";
         var badgeVersion = document.getElementById('version-badge');
         var gruEgg = document.getElementById('gru-easter-egg');
 
@@ -395,10 +377,7 @@
             e.stopPropagation();
             gruEgg.style.display = gruEgg.style.display === 'block' ? 'none' : 'block';
         });
-
-        document.addEventListener('click', function() {
-            gruEgg.style.display = 'none';
-        });
+        document.addEventListener('click', function() { gruEgg.style.display = 'none'; });
 
         var xhrVer = new XMLHttpRequest();
         xhrVer.open('GET', 'version.json?t=' + new Date().getTime(), true);
@@ -409,16 +388,10 @@
                     if (dadosVersao.version !== versaoLocalSite) {
                         badgeVersion.innerText = "Atualizando...";
                         if ('caches' in window) {
-                            caches.keys().then(function(names) {
-                                for (var i = 0; i < names.length; i++) {
-                                    caches.delete(names[i]);
-                                }
-                            });
+                            caches.keys().then(function(names) { for (var i = 0; i < names.length; i++) caches.delete(names[i]); });
                         }
                         localStorage.clear();
-                        setTimeout(function() {
-                            window.location.reload(true);
-                        }, 1000);
+                        setTimeout(function() { window.location.reload(true); }, 1000);
                     }
                 } catch(e) {}
             }
@@ -440,12 +413,9 @@
                     } else {
                         var decoded = decodeURIComponent(atob(miauParam));
                         var parts = decoded.split('|');
-                        if (parts.length === 2) {
-                            mostrarLeituraFluffytag(parts[0], parts[1]);
-                        }
+                        if (parts.length === 2) { mostrarLeituraFluffytag(parts[0], parts[1]); }
                     }
                 } catch(e) { console.log("Fluffytag corrompida ou inválida.", e); }
-                
                 var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.replaceState({path:newUrl}, '', newUrl);
             }
@@ -458,7 +428,6 @@
 
         document.getElementById('unlockPinBtn').addEventListener('click', function() {
             var pinDigitado = document.getElementById('pinUnlockInput').value.trim();
-            
             try {
                 var bytes = CryptoJS.AES.decrypt(globalEncryptedCipher, pinDigitado);
                 var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
@@ -470,9 +439,7 @@
                 } else {
                     document.getElementById('pinErrorText').style.display = 'block';
                 }
-            } catch(e) {
-                document.getElementById('pinErrorText').style.display = 'block';
-            }
+            } catch(e) { document.getElementById('pinErrorText').style.display = 'block'; }
         });
 
         document.getElementById('closeReadBtn').addEventListener('click', function() {
@@ -492,7 +459,6 @@
         var liveIndicator = document.getElementById('liveIndicator');
         var visualizer = document.getElementById('visualizer');
         var songTitleText = document.getElementById('songTitle');
-
         var canvasCtx = visualizer ? visualizer.getContext('2d') : null;
         var audioCtx, analyser, mediaSource, dataArray, animationIdCanvas;
         
@@ -507,41 +473,30 @@
                 analyser.connect(audioCtx.destination);
                 analyser.fftSize = 64; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
-            } catch (e) { console.log("Web Audio API bloqueada pela TV/Navegador.", e); }
+            } catch (e) { console.log("Web Audio API bloqueada.", e); }
         }
 
         function drawVisualizer() {
             if (!isPlaying) return;
             animationIdCanvas = requestAnimationFrame(drawVisualizer);
-            
             canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
-            
-            var numBars = 6;
-            var barWidth = (visualizer.width / numBars) - 2;
-            var x = 0;
-            
+            var numBars = 6; var barWidth = (visualizer.width / numBars) - 2; var x = 0;
             var hasData = false;
             if (analyser && dataArray) {
                 analyser.getByteFrequencyData(dataArray);
                 hasData = dataArray.some(function(val) { return val > 0; });
             }
-            
             var bandas = [1, 3, 6, 10, 16, 22]; 
-
             for (var i = 0; i < numBars; i++) {
                 var barHeight;
-                
                 if (hasData) {
-                    var valorFrequencia = dataArray[bandas[i]]; 
-                    var porcentagem = Math.pow(valorFrequencia / 255, 1.5); 
+                    var porcentagem = Math.pow(dataArray[bandas[i]] / 255, 1.5); 
                     barHeight = porcentagem * visualizer.height; 
                 } else {
                     var tempo = Date.now() / 180;
                     barHeight = (Math.sin(tempo + (i * 0.8)) + 1) * 0.5 * (visualizer.height * 0.85) + 4;
                 }
-
                 if (barHeight < 2) barHeight = 2; 
-                
                 canvasCtx.fillStyle = '#462c26';
                 canvasCtx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
                 x += barWidth + 2;
@@ -556,12 +511,35 @@
             else { navigator.clipboard.writeText(t + " - " + u); var s = this.querySelector('span'); var old = s.innerText; s.innerText = "Copiado!"; setTimeout(function(){ s.innerText = old; }, 2000); }
         });
 
-        // --- GERADOR DE FLUFFYTAG COM CRIPTOGRAFIA AES ---
+        // --- ENGINE CUSTOMIZADA DO QR CODE (FOTO POR MÓDULO) ---
         var currentFluffyUrl = "";
+        var customImageObj = null;
 
-        function gerarQrCodeFluffytag() {
-            var musicaAtual = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "A programação da Zara FM";
+        // Ao subir uma imagem customizada
+        document.getElementById('customImageInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    var img = new Image();
+                    img.onload = function() {
+                        customImageObj = img;
+                        gerarQrCodeCanvasEngine();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                customImageObj = null;
+                gerarQrCodeCanvasEngine();
+            }
+        });
+
+        function gerarQrCodeCanvasEngine() {
+            var musicaDigitada = document.getElementById('customSongInput').value.trim();
+            var musicaAtual = musicaDigitada !== "" ? musicaDigitada : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "A programação da Zara FM");
             var pinDigitado = document.getElementById('pinCodeInput').value.trim();
+            var corEscolhida = document.getElementById('qrColorSelect').value;
             
             var now = new Date();
             var dataFormatada = now.toLocaleDateString('pt-BR') + " às " + now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
@@ -569,37 +547,82 @@
             var rawData = musicaAtual + "|" + dataFormatada;
 
             if (pinDigitado && pinDigitado.length === 4) {
-                // Criptografa dados usando o PIN como chave AES real
                 var encryptedData = CryptoJS.AES.encrypt(rawData, pinDigitado).toString();
                 var encodedBase64 = btoa(encodeURIComponent(encryptedData));
                 currentFluffyUrl = "https://zarafm.xyz/?miau=enc_" + encodeURIComponent(encodedBase64);
             } else {
-                // Sem senha, fluxo público normal
                 var encodedBase64 = btoa(encodeURIComponent(rawData));
                 currentFluffyUrl = "https://zarafm.xyz/?miau=" + encodeURIComponent(encodedBase64);
             }
 
-            var qrContainer = document.getElementById('qrCodeContainer');
-            qrContainer.innerHTML = ""; 
-            new QRCode(qrContainer, {
-                text: currentFluffyUrl,
-                width: 180,
-                height: 180,
-                colorDark : "#462c26",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
-            });
+            // A MÁGICA: Renderizando no Canvas pixel a pixel
+            var qr = qrcode(0, 'H'); // Nível de Correção Alta, tamanho automático
+            qr.addData(currentFluffyUrl);
+            qr.make();
+            
+            var moduleCount = qr.getModuleCount();
+            var maxCanvasSize = 220; 
+            var cellSize = Math.floor(maxCanvasSize / (moduleCount + 2)); // Deixamos 1 celula de margem (padding)
+            var actualSize = cellSize * moduleCount;
+            var margin = (maxCanvasSize - actualSize) / 2;
+
+            var canvas = document.getElementById('qrCodeCanvas');
+            var ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, maxCanvasSize, maxCanvasSize);
+
+            for (var row = 0; row < moduleCount; row++) {
+                for (var col = 0; col < moduleCount; col++) {
+                    var isDark = qr.isDark(row, col);
+                    
+                    if (isDark) {
+                        var xPos = margin + (col * cellSize);
+                        var yPos = margin + (row * cellSize);
+                        
+                        if (customImageObj) {
+                            // Carimba a foto do usuário perfeitamente dentro daquele quadradinho!
+                            ctx.drawImage(customImageObj, xPos, yPos, cellSize, cellSize);
+                        } else {
+                            // Fallback para cor sólida com design levemente arredondado
+                            ctx.fillStyle = corEscolhida;
+                            ctx.beginPath();
+                            ctx.roundRect(xPos, yPos, cellSize, cellSize, 2); 
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            // Opcional: Desenha o logo da ZaraFM no meio (cobre 20% do QR Code, a correção 'H' suporta isso)
+            var logo = new Image();
+            logo.crossOrigin = "Anonymous";
+            logo.onload = function() {
+                var logoSize = Math.floor(maxCanvasSize * 0.22);
+                var logoX = (maxCanvasSize - logoSize) / 2;
+                var logoY = (maxCanvasSize - logoSize) / 2;
+                
+                // Desenha um fundo branco atrás do logo para não misturar com os módulos
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.roundRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4, 8);
+                ctx.fill();
+                
+                // Desenha o logo
+                ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+            };
+            logo.src = "https://zarafm.xyz/zaralogo.png?v=3";
         }
 
         document.getElementById('miaumoryBtn').addEventListener('click', function() {
-            document.getElementById('pinCodeInput').value = ""; 
-            gerarQrCodeFluffytag();
+            gerarQrCodeCanvasEngine();
             document.getElementById('miaumoryGenerateModal').style.display = 'flex';
         });
 
-        document.getElementById('pinCodeInput').addEventListener('input', function() {
-            gerarQrCodeFluffytag();
-        });
+        // Eventos que disparam a atualização
+        document.getElementById('pinCodeInput').addEventListener('input', gerarQrCodeCanvasEngine);
+        document.getElementById('customSongInput').addEventListener('input', gerarQrCodeCanvasEngine);
+        document.getElementById('qrColorSelect').addEventListener('change', gerarQrCodeCanvasEngine);
 
         document.getElementById('shareQrBtn').addEventListener('click', function() {
             var t = "Olha essa lembrança musical que guardei na Fluffytag da Zara FM! 🐾";
@@ -636,126 +659,75 @@
                         { src: urlLogoAbsoluta, sizes: '512x512', type: 'image/png' }
                     ]
                 });
-
                 try {
-                    navigator.mediaSession.setActionHandler('play', function() {
-                        if (!isPlaying) playPauseBtn.click();
-                    });
-                    navigator.mediaSession.setActionHandler('pause', function() {
-                        if (isPlaying) playPauseBtn.click();
-                    });
+                    navigator.mediaSession.setActionHandler('play', function() { if (!isPlaying) playPauseBtn.click(); });
+                    navigator.mediaSession.setActionHandler('pause', function() { if (isPlaying) playPauseBtn.click(); });
                 } catch(err) {}
             }
         }
 
         playPauseBtn.addEventListener('click', function() {
             if (isPlaying) {
-                audio.pause();
-                audio.src = ""; 
-                iconContainer.innerHTML = playSvg;
-                statusText.innerText = "Pausado";
-                liveIndicator.style.display = "none";
-                visualizer.classList.remove('active');
-                cancelAnimationFrame(animationIdCanvas);
-                document.title = tituloOriginal;
-                isPlaying = false;
+                audio.pause(); audio.src = ""; iconContainer.innerHTML = playSvg;
+                statusText.innerText = "Pausado"; liveIndicator.style.display = "none";
+                visualizer.classList.remove('active'); cancelAnimationFrame(animationIdCanvas);
+                document.title = tituloOriginal; isPlaying = false;
             } else {
                 initAudioVisualizer(); 
                 if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
-
-                statusText.innerText = "Conectando...";
-                atualizarBolhaCelular("Conectando...");
+                statusText.innerText = "Conectando..."; atualizarBolhaCelular("Conectando...");
                 
                 var urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
                 audio.src = urlAoVivo;
-
                 var playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(function() {
-                        iconContainer.innerHTML = pauseSvg;
-                        statusText.innerText = "Ao Vivo";
-                        liveIndicator.style.display = "block";
-                        visualizer.classList.add('active');
-                        isPlaying = true;
-                        drawVisualizer();
-                        buscarNomeDaMusica();
+                        iconContainer.innerHTML = pauseSvg; statusText.innerText = "Ao Vivo";
+                        liveIndicator.style.display = "block"; visualizer.classList.add('active');
+                        isPlaying = true; drawVisualizer(); buscarNomeDaMusica();
                     }).catch(function() {
-                        statusText.innerText = "Erro. Tente novamente";
-                        iconContainer.innerHTML = playSvg;
-                        isPlaying = false;
+                        statusText.innerText = "Erro. Tente novamente"; iconContainer.innerHTML = playSvg; isPlaying = false;
                     });
                 } else {
-                    iconContainer.innerHTML = pauseSvg;
-                    statusText.innerText = "Ao Vivo";
-                    liveIndicator.style.display = "block";
-                    visualizer.classList.add('active');
-                    isPlaying = true;
-                    drawVisualizer();
-                    buscarNomeDaMusica();
+                    iconContainer.innerHTML = pauseSvg; statusText.innerText = "Ao Vivo";
+                    liveIndicator.style.display = "block"; visualizer.classList.add('active');
+                    isPlaying = true; drawVisualizer(); buscarNomeDaMusica();
                 }
             }
         });
 
-        volumeSlider.addEventListener('input', function(e) { 
-            audio.volume = e.target.value; 
-        });
-
+        volumeSlider.addEventListener('input', function(e) { audio.volume = e.target.value; });
         audio.addEventListener('error', function() {
             if (isPlaying) {
-                statusText.innerText = "Sinal Perdido";
-                liveIndicator.style.display = "none";
-                visualizer.classList.remove('active');
-                cancelAnimationFrame(animationIdCanvas);
-                iconContainer.innerHTML = playSvg;
-                document.title = tituloOriginal;
-                isPlaying = false;
+                statusText.innerText = "Sinal Perdido"; liveIndicator.style.display = "none";
+                visualizer.classList.remove('active'); cancelAnimationFrame(animationIdCanvas);
+                iconContainer.innerHTML = playSvg; document.title = tituloOriginal; isPlaying = false;
             }
         });
 
         function buscarNomeDaMusica() {
             if (!isPlaying) return;
-
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'https://radio.zarafm.xyz/status-json.xsl?nocache=' + new Date().getTime(), true);
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var dados = JSON.parse(xhr.responseText);
-                            var titulo = "";
-
-                            if (dados.icestats && dados.icestats.source) {
-                                var fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
-                                
-                                if (fonte.metadata && fonte.metadata.x_icy_title) {
-                                    titulo = fonte.metadata.x_icy_title;
-                                } else if (fonte.title) {
-                                    titulo = fonte.title;
-                                }
-
-                                if (titulo) {
-                                    titulo = titulo.split('\t').pop();
-                                    titulo = titulo.split('\\').pop().split('/').pop();
-                                    titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "");
-                                    titulo = titulo.replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "");
-                                    titulo = titulo.trim().replace(/^-+|-+$/g, '');
-                                }
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    try {
+                        var dados = JSON.parse(xhr.responseText);
+                        var titulo = "";
+                        if (dados.icestats && dados.icestats.source) {
+                            var fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
+                            if (fonte.metadata && fonte.metadata.x_icy_title) { titulo = fonte.metadata.x_icy_title; } 
+                            else if (fonte.title) { titulo = fonte.title; }
+                            if (titulo) {
+                                titulo = titulo.split('\t').pop().split('\\').pop().split('/').pop();
+                                titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "").replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "").trim().replace(/^-+|-+$/g, '');
                             }
-
-                            if (titulo && titulo !== "") {
-                                songTitleText.innerText = titulo;
-                                atualizarBolhaCelular(titulo);
-                            } else {
-                                songTitleText.innerText = "Zara FM";
-                                atualizarBolhaCelular("Zara FM");
-                            }
-                        } catch (erro) {
-                            songTitleText.innerText = "Transmissão Ao Vivo";
-                            atualizarBolhaCelular("Transmissão Ao Vivo");
                         }
-                    }
-                    setTimeout(buscarNomeDaMusica, 20000);
+                        if (titulo && titulo !== "") { songTitleText.innerText = titulo; atualizarBolhaCelular(titulo); } 
+                        else { songTitleText.innerText = "Zara FM"; atualizarBolhaCelular("Zara FM"); }
+                    } catch (erro) { songTitleText.innerText = "Transmissão Ao Vivo"; atualizarBolhaCelular("Transmissão Ao Vivo"); }
                 }
+                setTimeout(buscarNomeDaMusica, 20000);
             };
             xhr.send();
         }
@@ -764,75 +736,42 @@
             e.preventDefault();
             var btn = document.getElementById('btnEnviar');
             var status = document.getElementById('mensagemStatus');
-            var ouvinte = document.getElementById('nomeOuvinte').value;
-            var musica = document.getElementById('nomeMusica').value;
-
-            btn.disabled = true;
-            btn.innerText = "Enviando...";
-            
+            btn.disabled = true; btn.innerText = "Enviando...";
             var xhr = new XMLHttpRequest();
             xhr.open('POST', 'https://zararequests.discloud.app/pedir', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        status.innerText = "✅ Pedido enviado com sucesso!";
-                        status.style.color = "#2e7d32";
-                        document.getElementById('formPedido').reset();
-                    } else {
-                        status.innerText = "❌ Erro ao enviar, tente de novo.";
-                        status.style.color = "#c62828";
-                    }
-                    btn.disabled = false;
-                    btn.innerText = "Enviar Pedido 🎶";
-                    setTimeout(function() { status.innerText = ""; }, 5000);
+                        status.innerText = "✅ Pedido enviado com sucesso!"; status.style.color = "#2e7d32"; document.getElementById('formPedido').reset();
+                    } else { status.innerText = "❌ Erro ao enviar, tente de novo."; status.style.color = "#c62828"; }
+                    btn.disabled = false; btn.innerText = "Enviar Pedido 🎶"; setTimeout(function() { status.innerText = ""; }, 5000);
                 }
             };
-            xhr.send(JSON.stringify({ ouvinte: ouvinte, musica: musica }));
+            xhr.send(JSON.stringify({ ouvinte: document.getElementById('nomeOuvinte').value, musica: document.getElementById('nomeMusica').value }));
         });
 
         var screensaver = document.getElementById('dvd-screensaver');
         var logo = document.getElementById('dvd-logo');
-        var timeoutDvd;
-        var x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5;
-        var animationId;
-
+        var timeoutDvd; var x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5; var animationId;
         function resetTimerDvd() {
-            screensaver.style.display = 'none'; 
-            cancelAnimationFrame(animationId); 
-            clearTimeout(timeoutDvd);
-            
+            screensaver.style.display = 'none'; cancelAnimationFrame(animationId); clearTimeout(timeoutDvd);
             timeoutDvd = setTimeout(function() {
-                screensaver.style.display = 'block'; 
-                x = Math.random() * (window.innerWidth - logo.clientWidth);
-                y = Math.random() * (window.innerHeight - logo.clientHeight);
-                animarLogo(); 
+                screensaver.style.display = 'block'; x = Math.random() * (window.innerWidth - logo.clientWidth);
+                y = Math.random() * (window.innerHeight - logo.clientHeight); animarLogo(); 
             }, 180000); 
         }
-
         function animarLogo() {
-            var screenW = window.innerWidth;
-            var screenH = window.innerHeight;
-            var logoW = logo.clientWidth;
-            var logoH = logo.clientHeight;
-
-            x += dirX * speed;
-            y += dirY * speed;
-
+            var screenW = window.innerWidth; var screenH = window.innerHeight;
+            var logoW = logo.clientWidth; var logoH = logo.clientHeight;
+            x += dirX * speed; y += dirY * speed;
             if (x + logoW >= screenW || x <= 0) dirX *= -1;
             if (y + logoH >= screenH || y <= 0) dirY *= -1;
-
-            logo.style.left = x + 'px';
-            logo.style.top = y + 'px';
-
+            logo.style.left = x + 'px'; logo.style.top = y + 'px';
             animationId = requestAnimationFrame(animarLogo);
         }
-
-        window.addEventListener('mousemove', resetTimerDvd);
-        window.addEventListener('keydown', resetTimerDvd);
-        window.addEventListener('touchstart', resetTimerDvd);
-        window.addEventListener('scroll', resetTimerDvd);
-
+        window.addEventListener('mousemove', resetTimerDvd); window.addEventListener('keydown', resetTimerDvd);
+        window.addEventListener('touchstart', resetTimerDvd); window.addEventListener('scroll', resetTimerDvd);
         resetTimerDvd();
     </script>
 </body>
