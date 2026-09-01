@@ -346,7 +346,8 @@
                 <input type="password" id="pinCodeInput" maxlength="4" placeholder="••••">
             </div>
 
-            <p>Salve a imagem ou compartilhe o QR Code para eternizar o momento!</p>
+            <p>Essa é a sua Fluffytag! Guarde ela pra eternizar esse momento, ou compartilhe
+             o momento!</p>
             <div id="qrCodeContainer"></div>
             
             <button id="shareQrBtn" class="btn-share" style="width: 100%; justify-content: center; margin-bottom: 10px;">
@@ -358,6 +359,7 @@
         </div>
     </div>
 
+    <!-- MODAL: Digitar Senha ao Ler -->
     <div id="miaumoryPinModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2>🔒 Tag Protegida</h2>
@@ -368,6 +370,7 @@
         </div>
     </div>
 
+    <!-- MODAL: Ler Fluffytag -->
     <div id="miaumoryReadModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2>🎵 Fluffytag Encontrada!</h2>
@@ -376,12 +379,7 @@
         </div>
     </div>
 
-    <div id="gru-easter-egg">
-        <img src="https://media.tenor.com/t3P9X9wN7vAAAAAC/gru-el-macho.gif" alt="Gru e El Macho">
-        <p>hmmm... 34? from where I remember this number from?</p>
-    </div>
-
-    <div id="version-badge">v0.34 • Atualizado</div>
+    <div id="version-badge">v0.36 • Atualizado</div>
 
     <div id="dvd-screensaver">
         <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
@@ -390,11 +388,10 @@
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.34";
+        var versaoLocalSite = "0.36";
         var badgeVersion = document.getElementById('version-badge');
         var gruEgg = document.getElementById('gru-easter-egg');
 
-        // Lógica do Easter Egg do Gru (Booru verde reference)
         badgeVersion.addEventListener('click', function(e) {
             e.stopPropagation();
             gruEgg.style.display = gruEgg.style.display === 'block' ? 'none' : 'block';
@@ -557,7 +554,7 @@
 
         var currentFluffyUrl = "";
 
-        document.getElementById('miaumoryBtn').addEventListener('click', function() {
+        function gerarQrCodeFluffytag() {
             var musicaAtual = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "A programação da Zara FM";
             var pinDigitado = document.getElementById('pinCodeInput').value.trim();
             
@@ -579,8 +576,17 @@
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
+        }
 
+        document.getElementById('miaumoryBtn').addEventListener('click', function() {
+            document.getElementById('pinCodeInput').value = "";
+            gerarQrCodeFluffytag();
             document.getElementById('miaumoryGenerateModal').style.display = 'flex';
+        });
+
+        // Atualiza o QR Code instantaneamente conforme o usuário digita a senha
+        document.getElementById('pinCodeInput').addEventListener('input', function() {
+            gerarQrCodeFluffytag();
         });
 
         document.getElementById('shareQrBtn').addEventListener('click', function() {
