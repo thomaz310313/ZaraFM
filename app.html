@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="Zara FM">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <script>
     if ('serviceWorker' in navigator) {
@@ -319,7 +320,7 @@
         <div class="info-box">
             <div class="card">
                 <h2>🎧 A Rádio Oficial</h2>
-                <p>Você está ouvindo a Zara FM! Transmitindo os melhores hits pop, agora online.</p>
+                <p>Você está ouvindo a Zara FM! Transmitindo os mejores hits pop, agora online.</p>
 
                 <h2>💬 Peça sua Música</h2>
                 <p style="font-size: 0.95rem; margin-bottom: 15px;">Mande sua sugestão e ela vai direto pro painel do estúdio!</p>
@@ -333,21 +334,20 @@
             </div>
         </div>
     </div>
-
+    
     <div id="miaumoryGenerateModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>🐾 Sua Fluffytag</h2>
-                <button id="gearToggleBtn" class="gear-btn" title="Configurar Senha">⚙️</button>
+                <button id="gearToggleBtn" class="gear-btn" title="Configurar Criptografia">⚙️</button>
             </div>
             
             <div id="settingsPanel" class="settings-panel">
-                <label for="pinCodeInput">Senha de Proteção (4 dígitos):</label>
+                <label for="pinCodeInput">Bloquear com PIN (4 dígitos):</label>
                 <input type="password" id="pinCodeInput" maxlength="4" placeholder="••••">
             </div>
 
-            <p>Essa é a sua Fluffytag! Guarde ela pra eternizar esse momento, ou compartilhe
-             o momento!</p>
+            <p>Essa é a sua Fluffytag" Salve ela pra eternizar o momento, ou compartilhe com alguém!</p>
             <div id="qrCodeContainer"></div>
             
             <button id="shareQrBtn" class="btn-share" style="width: 100%; justify-content: center; margin-bottom: 10px;">
@@ -359,27 +359,26 @@
         </div>
     </div>
 
-    <!-- MODAL: Digitar Senha ao Ler -->
+    <!-- MODAL: Digitar Senha para Descriptografar -->
     <div id="miaumoryPinModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <h2>🔒 Tag Protegida</h2>
-            <p>Esta Fluffytag está trancada. Digite a senha de 4 dígitos:</p>
+            <h2>🔒 Tag Criptografada</h2>
+            <p>Esta Fluffytag está protegida. Digite a senha para abrir:</p>
             <input type="password" id="pinUnlockInput" maxlength="4" class="input-pedido" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" placeholder="••••">
             <button id="unlockPinBtn" class="btn-enviar">Desbloquear 🔓</button>
-            <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta!</p>
+            <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta ou corrompida!</p>
         </div>
     </div>
 
-    <!-- MODAL: Ler Fluffytag -->
     <div id="miaumoryReadModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <h2>🎵 Fluffytag Encontrada!</h2>
+            <h2>🎵 Fluffytag Descriptografada!</h2>
             <p id="miaumoryReadText"></p>
             <button id="closeReadBtn" class="btn-enviar" style="margin-top: 10px;">Ouvir a Rádio</button>
         </div>
     </div>
 
-    <div id="version-badge">v0.36 • Atualizado</div>
+    <div id="version-badge">v0.37 • Atualizado</div>
 
     <div id="dvd-screensaver">
         <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
@@ -388,7 +387,7 @@
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.36";
+        var versaoLocalSite = "0.37";
         var badgeVersion = document.getElementById('version-badge');
         var gruEgg = document.getElementById('gru-easter-egg');
 
@@ -426,7 +425,7 @@
         };
         xhrVer.send();
 
-        var globalDecodedData = null;
+        var globalEncryptedCipher = null;
 
         window.addEventListener('DOMContentLoaded', function() {
             var urlParams = new URLSearchParams(window.location.search);
@@ -434,16 +433,14 @@
             
             if (miauParam) {
                 try {
-                    var decoded = decodeURIComponent(atob(miauParam));
-                    var parts = decoded.split('|'); 
-                    
-                    if (parts.length >= 2) {
-                        globalDecodedData = parts; 
-                        var pinSalvo = parts[2] ? parts[2].trim() : "";
-
-                        if (pinSalvo && pinSalvo !== "") {
-                            document.getElementById('miaumoryPinModal').style.display = 'flex';
-                        } else {
+                    if (miauParam.startsWith('enc_')) {
+                        var cipherBase64 = miauParam.replace('enc_', '');
+                        globalEncryptedCipher = decodeURIComponent(atob(cipherBase64));
+                        document.getElementById('miaumoryPinModal').style.display = 'flex';
+                    } else {
+                        var decoded = decodeURIComponent(atob(miauParam));
+                        var parts = decoded.split('|');
+                        if (parts.length === 2) {
                             mostrarLeituraFluffytag(parts[0], parts[1]);
                         }
                     }
@@ -460,13 +457,20 @@
         }
 
         document.getElementById('unlockPinBtn').addEventListener('click', function() {
-            var digitado = document.getElementById('pinUnlockInput').value;
-            var senhaReal = globalDecodedData && globalDecodedData[2] ? globalDecodedData[2].trim() : "";
+            var pinDigitado = document.getElementById('pinUnlockInput').value.trim();
+            
+            try {
+                var bytes = CryptoJS.AES.decrypt(globalEncryptedCipher, pinDigitado);
+                var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+                var parts = decryptedText.split('|');
 
-            if (digitado === senhaReal) {
-                document.getElementById('miaumoryPinModal').style.display = 'none';
-                mostrarLeituraFluffytag(globalDecodedData[0], globalDecodedData[1]);
-            } else {
+                if (parts.length === 2 && parts[0].length > 0) {
+                    document.getElementById('miaumoryPinModal').style.display = 'none';
+                    mostrarLeituraFluffytag(parts[0], parts[1]);
+                } else {
+                    document.getElementById('pinErrorText').style.display = 'block';
+                }
+            } catch(e) {
                 document.getElementById('pinErrorText').style.display = 'block';
             }
         });
@@ -552,6 +556,7 @@
             else { navigator.clipboard.writeText(t + " - " + u); var s = this.querySelector('span'); var old = s.innerText; s.innerText = "Copiado!"; setTimeout(function(){ s.innerText = old; }, 2000); }
         });
 
+        // --- GERADOR DE FLUFFYTAG COM CRIPTOGRAFIA AES ---
         var currentFluffyUrl = "";
 
         function gerarQrCodeFluffytag() {
@@ -561,10 +566,18 @@
             var now = new Date();
             var dataFormatada = now.toLocaleDateString('pt-BR') + " às " + now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
             
-            var rawData = musicaAtual + "|" + dataFormatada + "|" + pinDigitado;
-            var encodedBase64 = btoa(encodeURIComponent(rawData));
-            
-            currentFluffyUrl = "https://zarafm.xyz/?miau=" + encodeURIComponent(encodedBase64);
+            var rawData = musicaAtual + "|" + dataFormatada;
+
+            if (pinDigitado && pinDigitado.length === 4) {
+                // Criptografa dados usando o PIN como chave AES real
+                var encryptedData = CryptoJS.AES.encrypt(rawData, pinDigitado).toString();
+                var encodedBase64 = btoa(encodeURIComponent(encryptedData));
+                currentFluffyUrl = "https://zarafm.xyz/?miau=enc_" + encodeURIComponent(encodedBase64);
+            } else {
+                // Sem senha, fluxo público normal
+                var encodedBase64 = btoa(encodeURIComponent(rawData));
+                currentFluffyUrl = "https://zarafm.xyz/?miau=" + encodeURIComponent(encodedBase64);
+            }
 
             var qrContainer = document.getElementById('qrCodeContainer');
             qrContainer.innerHTML = ""; 
@@ -579,12 +592,11 @@
         }
 
         document.getElementById('miaumoryBtn').addEventListener('click', function() {
-            document.getElementById('pinCodeInput').value = "";
+            document.getElementById('pinCodeInput').value = ""; 
             gerarQrCodeFluffytag();
             document.getElementById('miaumoryGenerateModal').style.display = 'flex';
         });
 
-        // Atualiza o QR Code instantaneamente conforme o usuário digita a senha
         document.getElementById('pinCodeInput').addEventListener('input', function() {
             gerarQrCodeFluffytag();
         });
