@@ -358,31 +358,48 @@
             ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath(); ctx.fill();
         }
 
-        function getEarIndices(text) {
-            let bigHash = 5381n;
-            for (let i = 0; i < text.length; i++) {
-                bigHash = (bigHash * 33n + BigInt(text.charCodeAt(i))) & 0x1FFFFFFFFFn;
-            }
-            let indices = [];
-            let temp = bigHash;
-            for (let i = 0; i < 15; i++) {
-                indices.push(Number(temp & 7n));
-                temp = temp >> 3n;
-            }
-            return indices;
+        // --- ZaraCode encoding: fully self-contained, no server/database needed ---
+        // The code doesn't hash the title — it encodes the song's iTunes track ID
+        // directly into the 15 color slots (5 ears x 3 slots). Anyone who scans
+        // it decodes that number and asks Apple's free, public lookup API what
+        // song it is. No backend, no storage, no RAM cost on your side.
+        //
+        // Slots 0-11 (36 bits, base-8): the track ID (fits any ID up to ~68.7 billion,
+        //   far above real iTunes IDs).
+        // Slots 12-14 (9 bits): a checksum of slots 0-11, so a blurry/misread photo
+        //   is detected and rejected instead of silently showing the wrong song.
+
+        function computeZaraChecksum(idDigits) {
+            var sum = 0;
+            for (var i = 0; i < idDigits.length; i++) sum += idDigits[i] * (i + 3);
+            return sum % 512;
         }
 
-        function saveEarMapping(indices, title, artist, cover) {
-            let key = indices.join(',');
-            let db = JSON.parse(localStorage.getItem('zaraEarDb') || '{}');
-            db[key] = { title: title, artist: artist, cover: cover };
-            localStorage.setItem('zaraEarDb', JSON.stringify(db));
+        function encodeTrackId(trackId) {
+            var idDigits = [];
+            var n = trackId;
+            for (var i = 0; i < 12; i++) { idDigits.push(n % 8); n = Math.floor(n / 8); }
+            var checksum = computeZaraChecksum(idDigits);
+            var checksumDigits = [];
+            for (var i = 0; i < 3; i++) { checksumDigits.push(checksum % 8); checksum = Math.floor(checksum / 8); }
+            return idDigits.concat(checksumDigits); // 15 values total
         }
 
-        function lookupEarMapping(indices) {
-            let key = indices.join(',');
-            let db = JSON.parse(localStorage.getItem('zaraEarDb') || '{}');
-            return db[key] || null;
+        function digitsToNumber(digits) {
+            var value = 0;
+            for (var i = digits.length - 1; i >= 0; i--) value = value * 8 + digits[i];
+            return value;
+        }
+
+        // Returns the decoded track ID, or null if the checksum doesn't match
+        // (meaning the photo was misread and shouldn't be trusted).
+        function decodeZaraCode(indices) {
+            var idDigits = indices.slice(0, 12);
+            var checksumDigits = indices.slice(12, 15);
+            var readChecksum = digitsToNumber(checksumDigits);
+            var expectedChecksum = computeZaraChecksum(idDigits);
+            if (readChecksum !== expectedChecksum) return null;
+            return digitsToNumber(idDigits);
         }
 
         function setupItunesSearch(inputId, resultsId, onSelectCallback) {
@@ -412,7 +429,7 @@
                                 </div>
                             `;
                             div.onclick = function() {
-                                onSelectCallback({ title: track.trackName, artist: track.artistName, cover: imgUrl });
+                                onSelectCallback({ title: track.trackName, artist: track.artistName, cover: imgUrl, id: track.trackId });
                                 input.value = track.trackName + " - " + track.artistName;
                                 resultsBox.innerHTML = '';
                             };
@@ -502,7 +519,7 @@
         });
 
 
-        // --- ZARACODE (ORELHAS DE GATO COM HASH PRECISO) ---
+        // --- ZARACODE (ORELHAS DE GATO — CÓDIGO AUTOCONTIDO VIA ID DO ITUNES) ---
         var earTrack = null;
 
         setupItunesSearch('earSearchInput', 'earSearchResults', function(track) {
@@ -511,13 +528,50 @@
         });
 
         function renderEarCodeCard() {
-            var title = earTrack ? earTrack.title : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM");
-            var artist = earTrack ? earTrack.artist : "A rádio mais felina";
-            var coverUrl = earTrack ? earTrack.cover : defaultCover;
-            
-            var identifier = title.toLowerCase().trim() + "|" + artist.toLowerCase().trim();
-            var colorIndices = getEarIndices(identifier);
-            saveEarMapping(colorIndices, title, artist, coverUrl);
+            if (earTrack && earTrack.id) {
+                buildEarCard(earTrack.title, earTrack.artist, earTrack.cover, earTrack.id);
+                return;
+            }
+
+            // No song picked from search yet — try a quick auto-match against
+            // whatever is currently playing so the button still works out of
+            // the box, without needing a chosen search result.
+            var current = songTitleText.innerText;
+            if (current && current !== "Aguardando rádio...") {
+                fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(current) + '&entity=song&limit=1')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.results && data.results.length) {
+                            var t = data.results[0];
+                            buildEarCard(t.trackName, t.artistName, t.artworkUrl100.replace('100x100bb', '200x200bb'), t.trackId);
+                        } else {
+                            showEarPlaceholder();
+                        }
+                    })
+                    .catch(showEarPlaceholder);
+            } else {
+                showEarPlaceholder();
+            }
+        }
+
+        function showEarPlaceholder() {
+            var canvas = document.getElementById('earCanvas');
+            var ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 300, 480);
+            ctx.fillStyle = '#efa39a';
+            roundRect(ctx, 0, 0, 300, 480, 24);
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#462c26'; ctx.textAlign = 'center';
+            ctx.font = 'bold 16px "Fredoka", sans-serif';
+            ctx.fillText('Busque uma música 🔍', 150, 235);
+            ctx.font = '13px "Fredoka", sans-serif'; ctx.globalAlpha = 0.75;
+            ctx.fillText('para gerar o ZaraCode', 150, 258);
+            ctx.globalAlpha = 1.0;
+            document.getElementById('downloadEarBtn').style.display = 'none';
+        }
+
+        function buildEarCard(title, artist, coverUrl, trackId) {
+            var colorIndices = encodeTrackId(trackId);
 
             var canvas = document.getElementById('earCanvas');
             var ctx = canvas.getContext('2d');
@@ -662,17 +716,46 @@
 
                     document.getElementById('scannerEarModal').style.display = 'none';
                     document.getElementById('uploadEarInput').value = "";
-                    
-                    var foundSong = lookupEarMapping(sampledIndices);
-                    if (foundSong) {
-                        mostrarResultadoLeitura(foundSong);
-                    } else {
+
+                    var trackId = decodeZaraCode(sampledIndices);
+                    if (trackId === null) {
                         mostrarResultadoLeitura({
-                            title: "ZaraCode Desconhecido",
-                            artist: "Gere o card neste dispositivo para salvá-lo!",
+                            title: "Não consegui ler esse código 😿",
+                            artist: "Tente uma foto mais nítida, bem iluminada e sem cortar as orelhas",
                             cover: defaultCover
                         });
+                        return;
                     }
+
+                    // Show something immediately, then fill it in once iTunes replies —
+                    // this is a plain public API call, no server of ours involved.
+                    mostrarResultadoLeitura({ title: "Verificando... 🔍", artist: "Consultando a faixa", cover: defaultCover });
+
+                    fetch('https://itunes.apple.com/lookup?id=' + trackId)
+                        .then(function(res) { return res.json(); })
+                        .then(function(data) {
+                            if (data.results && data.results.length) {
+                                var t = data.results[0];
+                                mostrarResultadoLeitura({
+                                    title: t.trackName,
+                                    artist: t.artistName,
+                                    cover: t.artworkUrl100 ? t.artworkUrl100.replace('100x100bb', '200x200bb') : defaultCover
+                                });
+                            } else {
+                                mostrarResultadoLeitura({
+                                    title: "Faixa não encontrada",
+                                    artist: "O código foi lido certinho, mas a música não está mais disponível no iTunes",
+                                    cover: defaultCover
+                                });
+                            }
+                        })
+                        .catch(function() {
+                            mostrarResultadoLeitura({
+                                title: "Sem conexão 📡",
+                                artist: "Verifique sua internet e escaneie de novo",
+                                cover: defaultCover
+                            });
+                        });
                 };
                 img.src = event.target.result;
             };
