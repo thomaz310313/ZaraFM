@@ -181,8 +181,6 @@
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .modal-header h2 { font-size: 1.3rem; margin: 0; }
-        .gear-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 5px; transition: transform 0.3s; }
-        .gear-btn:hover { transform: rotate(90deg); }
         
         .search-results { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; max-height: 140px; overflow-y: auto; text-align: left; }
         .search-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.7); padding: 8px; border-radius: 12px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(70,44,38,0.1); }
@@ -198,14 +196,10 @@
             max-width: 100%; height: auto;
         }
 
-        .settings-panel { background: rgba(70,44,38,0.06); padding: 12px; border-radius: 14px; margin-bottom: 15px; display: none; text-align: left; }
-        .settings-panel label { font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 5px; }
-
         #version-badge {
             position: fixed; bottom: 15px; right: 15px; background: rgba(70, 44, 38, 0.85);
             color: #ffffff; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; z-index: 998;
             backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2);
-            cursor: pointer; transition: 0.2s;
         }
     </style>
 </head>
@@ -287,16 +281,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>🐾 Fluffytag (QR)</h2>
-                <button id="fluffyGearBtn" class="gear-btn" title="Segurança">⚙️</button>
             </div>
             
             <input type="text" id="fluffySearchInput" class="input-pedido" placeholder="🔍 Buscar música (iTunes)...">
             <div id="fluffySearchResults" class="search-results"></div>
-
-            <div id="fluffySettingsPanel" class="settings-panel">
-                <label for="fluffyPinInput">Senha (PIN 4 dígitos):</label>
-                <input type="password" id="fluffyPinInput" class="input-pedido" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 4px;">
-            </div>
 
             <canvas id="fluffyCanvas" class="card-preview" width="300" height="460"></canvas>
             
@@ -313,7 +301,7 @@
     <div id="earCodeModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🐱 ZaraCode</h2>
+                <h2>🐱 ZaraCode (Orelhas)</h2>
             </div>
             
             <input type="text" id="earSearchInput" class="input-pedido" placeholder="🔍 Buscar música (iTunes)...">
@@ -350,15 +338,14 @@
         </div>
     </div>
 
-    <div id="version-badge">v0.45 • Atualizado</div>
+    <div id="version-badge">v0.46 • Atualizado</div>
 
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.45";
+        var versaoLocalSite = "0.46";
         var defaultCover = "https://zarafm.xyz/zaralogo.png?v=3";
         var earPalette = ["#462c26", "#efa39a", "#f7cac9", "#ff4757", "#2e7d32", "#1976d2", "#7b1fa2", "#ffb300"];
-        var safeChars = ['A', 'E', 'I', 'O', 'U', 'N', 'R', 'S'];
 
         function roundRect(ctx, x, y, width, height, radius) {
             ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
@@ -366,6 +353,33 @@
             ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); ctx.lineTo(x + radius, y + height);
             ctx.quadraticCurveTo(x, y + height, x, y + height - radius); ctx.lineTo(x, y + radius);
             ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath(); ctx.fill();
+        }
+
+        function getEarIndices(text) {
+            let bigHash = 5381n;
+            for (let i = 0; i < text.length; i++) {
+                bigHash = (bigHash * 33n + BigInt(text.charCodeAt(i))) & 0x1FFFFFFFFFn;
+            }
+            let indices = [];
+            let temp = bigHash;
+            for (let i = 0; i < 15; i++) {
+                indices.push(Number(temp & 7n));
+                temp = temp >> 3n;
+            }
+            return indices;
+        }
+
+        function saveEarMapping(indices, title, artist, cover) {
+            let key = indices.join(',');
+            let db = JSON.parse(localStorage.getItem('zaraEarDb') || '{}');
+            db[key] = { title: title, artist: artist, cover: cover };
+            localStorage.setItem('zaraEarDb', JSON.stringify(db));
+        }
+
+        function lookupEarMapping(indices) {
+            let key = indices.join(',');
+            let db = JSON.parse(localStorage.getItem('zaraEarDb') || '{}');
+            return db[key] || null;
         }
 
         function setupItunesSearch(inputId, resultsId, onSelectCallback) {
@@ -406,7 +420,6 @@
             });
         }
 
-        // --- 1. FLUFFYTAG (QR) ---
         var fluffyTrack = null;
         var fluffyCurrentUrl = "";
 
@@ -415,27 +428,12 @@
             renderFluffyCard();
         });
 
-        document.getElementById('fluffyGearBtn').addEventListener('click', function() {
-            var p = document.getElementById('fluffySettingsPanel');
-            p.style.display = p.style.display === 'block' ? 'none' : 'block';
-        });
-
-        document.getElementById('fluffyPinInput').addEventListener('input', renderFluffyCard);
-
         function renderFluffyCard() {
             var title = fluffyTrack ? fluffyTrack.title : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM");
             var artist = fluffyTrack ? fluffyTrack.artist : "A rádio mais felina";
             var coverUrl = fluffyTrack ? fluffyTrack.cover : defaultCover;
-            var pin = document.getElementById('fluffyPinInput').value.trim();
-            
             var rawData = title + "|" + artist + "|" + coverUrl + "|" + new Date().toLocaleDateString('pt-BR');
-
-            if (pin && pin.length === 4) {
-                var enc = CryptoJS.AES.encrypt(rawData, pin).toString();
-                fluffyCurrentUrl = "https://zarafm.xyz/?miau=enc_" + btoa(encodeURIComponent(enc));
-            } else {
-                fluffyCurrentUrl = "https://zarafm.xyz/?miau=" + btoa(encodeURIComponent(rawData));
-            }
+            fluffyCurrentUrl = "https://zarafm.xyz/?miau=" + btoa(encodeURIComponent(rawData));
 
             var canvas = document.getElementById('fluffyCanvas');
             var ctx = canvas.getContext('2d');
@@ -487,7 +485,6 @@
 
         document.getElementById('fluffyBtn').addEventListener('click', function() {
             fluffyTrack = null; document.getElementById('fluffySearchInput').value = "";
-            document.getElementById('fluffyPinInput').value = "";
             renderFluffyCard();
             document.getElementById('fluffyModal').style.display = 'flex';
         });
@@ -502,7 +499,7 @@
         });
 
 
-        // --- 2. ZARACODE (ORELHAS DE GATO COM MAPEAMENTO DE CORES) ---
+        // --- ZARACODE (ORELHAS DE GATO COM HASH PRECISO) ---
         var earTrack = null;
 
         setupItunesSearch('earSearchInput', 'earSearchResults', function(track) {
@@ -515,13 +512,9 @@
             var artist = earTrack ? earTrack.artist : "A rádio mais felina";
             var coverUrl = earTrack ? earTrack.cover : defaultCover;
             
-            // Gerar 15 índices baseados no título da música
-            var cleanTitle = title.toUpperCase();
-            var colorIndices = [];
-            for (var i = 0; i < 15; i++) {
-                var char = i < cleanTitle.length ? cleanTitle[i] : 'A';
-                colorIndices.push(char.charCodeAt(0) % 8);
-            }
+            var identifier = title.toLowerCase().trim() + "|" + artist.toLowerCase().trim();
+            var colorIndices = getEarIndices(identifier);
+            saveEarMapping(colorIndices, title, artist, coverUrl);
 
             var canvas = document.getElementById('earCanvas');
             var ctx = canvas.getContext('2d');
@@ -535,12 +528,12 @@
             img.onload = function() {
                 ctx.save(); ctx.beginPath(); ctx.roundRect(30, 25, 240, 210, 16); ctx.clip();
                 ctx.drawImage(img, 30, 25, 240, 210); ctx.restore();
-                drawStyledCatEars(colorIndices, title, artist, coverUrl);
+                drawStyledCatEars(colorIndices, title, artist);
             };
-            img.onerror = function() { drawStyledCatEars(colorIndices, title, artist, coverUrl); };
+            img.onerror = function() { drawStyledCatEars(colorIndices, title, artist); };
             img.src = coverUrl;
 
-            function drawStyledCatEars(colors, t, a, cUrl) {
+            function drawStyledCatEars(colors, t, a) {
                 ctx.fillStyle = '#462c26'; ctx.textAlign = 'center';
                 ctx.font = 'bold 20px "Fredoka", sans-serif';
                 ctx.fillText(t.length > 22 ? t.substring(0, 20) + "..." : t, 150, 265);
@@ -553,7 +546,6 @@
                     var x = startX + (i * (earW + gap));
                     var l = colors[i * 3], r = colors[(i * 3) + 1], b = colors[(i * 3) + 2];
 
-                    // Orelha Base
                     ctx.fillStyle = earPalette[b];
                     ctx.beginPath();
                     ctx.moveTo(x + 10, startY + earH);
@@ -561,7 +553,6 @@
                     ctx.closePath();
                     ctx.fill();
 
-                    // Orelha Esquerda Interna
                     ctx.fillStyle = earPalette[l];
                     ctx.beginPath();
                     ctx.moveTo(x + 16, startY + earH - 8);
@@ -569,7 +560,6 @@
                     ctx.closePath();
                     ctx.fill();
 
-                    // Orelha Direita Interna
                     ctx.fillStyle = earPalette[r];
                     ctx.beginPath();
                     ctx.moveTo(x + earW / 2, startY + earH - 8);
@@ -577,7 +567,6 @@
                     ctx.closePath();
                     ctx.fill();
 
-                    // Contorno
                     ctx.strokeStyle = '#462c26'; ctx.lineWidth = 2.5;
                     ctx.beginPath();
                     ctx.moveTo(x + 10, startY + earH);
@@ -585,11 +574,6 @@
                     ctx.closePath();
                     ctx.stroke();
                 }
-
-                // Salvar metadados no canvas para a leitura instantânea
-                canvas.setAttribute('data-title', t);
-                canvas.setAttribute('data-artist', a);
-                canvas.setAttribute('data-cover', cUrl);
 
                 ctx.font = 'bold 12px "Fredoka", sans-serif'; ctx.fillStyle = '#462c26'; ctx.globalAlpha = 0.6;
                 ctx.fillText("🐾 ZARACODE • EXCLUSIVE", 150, 440); ctx.globalAlpha = 1.0;
@@ -614,7 +598,7 @@
         });
 
 
-        // --- 3. MOTOR DE LEITURA DE ZARACODE POR PIXEL ---
+        // --- SCANNER PROPRIETÁRIO DE ZARACODE ---
         document.getElementById('scanEarBtn').addEventListener('click', function() {
             document.getElementById('scannerEarModal').style.display = 'flex';
         });
@@ -653,19 +637,19 @@
                         });
                     }
 
-                    var reconstructedText = "";
-                    for (var j = 0; j < sampledIndices.length; j++) {
-                        reconstructedText += safeChars[sampledIndices[j]];
-                    }
-
                     document.getElementById('scannerEarModal').style.display = 'none';
                     document.getElementById('uploadEarInput').value = "";
                     
-                    mostrarResultadoLeitura({
-                        title: "ZaraCode ID: " + reconstructedText,
-                        artist: "Orelhas Felinas Escaneadas",
-                        cover: defaultCover
-                    });
+                    var foundSong = lookupEarMapping(sampledIndices);
+                    if (foundSong) {
+                        mostrarResultadoLeitura(foundSong);
+                    } else {
+                        mostrarResultadoLeitura({
+                            title: "ZaraCode Desconhecido",
+                            artist: "Gere o card neste dispositivo para salvá-lo!",
+                            cover: defaultCover
+                        });
+                    }
                 };
                 img.src = event.target.result;
             };
