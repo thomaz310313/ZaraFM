@@ -188,6 +188,8 @@
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .modal-header h2 { font-size: 1.3rem; margin: 0; }
+        .gear-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 5px; transition: transform 0.3s; }
+        .gear-btn:hover { transform: rotate(90deg); }
         
         .search-results { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; max-height: 140px; overflow-y: auto; text-align: left; }
         .search-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.7); padding: 8px; border-radius: 12px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(70,44,38,0.1); }
@@ -208,8 +210,11 @@
         #scannerGuide {
             display: none; position: absolute; box-sizing: border-box;
             border: 3px dashed rgba(255,255,255,0.9); border-radius: 12px; pointer-events: none;
-            box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);
+            box-shadow: 0 0 0 2000px rgba(0,0,0,0.6);
         }
+
+        .settings-panel { background: rgba(70,44,38,0.06); padding: 12px; border-radius: 14px; margin-bottom: 15px; display: none; text-align: left; }
+        .settings-panel label { font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 5px; }
 
         #version-badge {
             position: fixed; bottom: 15px; right: 15px; background: rgba(70, 44, 38, 0.85);
@@ -296,15 +301,21 @@
         </div>
     </div>
 
-    <!-- MODAL 1: FLUFFYTAG -->
+    <!-- MODAL 1: FLUFFYTAG COM OPÇÃO DE SENHA -->
     <div id="fluffyModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>🐾 Fluffytag (QR)</h2>
+                <button id="fluffyGearBtn" class="gear-btn" title="Segurança">⚙️</button>
             </div>
             
             <input type="text" id="fluffySearchInput" class="input-pedido" placeholder="🔍 Buscar música (iTunes)...">
             <div id="fluffySearchResults" class="search-results"></div>
+
+            <div id="fluffySettingsPanel" class="settings-panel">
+                <label for="fluffyPinInput">Senha Opcional (PIN 4 dígitos):</label>
+                <input type="password" id="fluffyPinInput" class="input-pedido" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 4px;">
+            </div>
 
             <canvas id="fluffyCanvas" class="card-preview" width="300" height="460"></canvas>
             
@@ -338,7 +349,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: SCANNER (câmera ou foto) — compartilhado entre Fluffytag e ZaraCode -->
+    <!-- MODAL 3: SCANNER UNIFICADO -->
     <div id="scannerModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2 id="scannerModalTitle">📷 Ler Código</h2>
@@ -352,7 +363,7 @@
             <canvas id="scannerCaptureCanvas" style="display:none;"></canvas>
 
             <button id="toggleCameraBtn" class="btn-enviar">📷 Usar Câmera</button>
-            <button id="captureFrameBtn" class="btn-enviar" style="display:none; margin-top: 10px; background: linear-gradient(180deg, #7a9e6f 0%, #4f6e46 100%);">📸 Capturar</button>
+            <button id="captureFrameBtn" class="btn-enviar" style="display:none; margin-top: 10px; background: linear-gradient(180deg, #7a9e6f 0%, #4f6e46 100%);">📸 Capturar Manual</button>
 
             <p style="margin: 16px 0 6px; font-size: 0.85rem; opacity: 0.7;">ou envie uma foto:</p>
             <input type="file" id="scannerFileInput" accept="image/*" class="input-pedido">
@@ -361,30 +372,37 @@
         </div>
     </div>
 
-    <!-- MODAL: Resultado Revelado -->
+    <!-- MODAL 4: DIGITAR SENHA (FLUFFYTAG PROTEGIDO) -->
+    <div id="pinModal" class="modal-overlay" style="display:none; z-index: 1005;">
+        <div class="modal-content">
+            <h2>🔒 Tag Protegida</h2>
+            <p>Digite a senha de 4 dígitos:</p>
+            <input type="password" id="pinUnlockInput" maxlength="4" class="input-pedido" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" placeholder="••••">
+            <button id="unlockPinBtn" class="btn-enviar">Desbloquear 🔓</button>
+            <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta!</p>
+        </div>
+    </div>
+
+    <!-- MODAL 5: RESULTADO REVELADO -->
     <div id="readModal" class="modal-overlay" style="display:none; z-index: 1010;">
         <div class="modal-content">
-            <h2>🎵 ZaraCode Revelado!</h2>
+            <h2>🎵 Memória Revelada!</h2>
             <div id="readCoverContainer" style="margin-bottom:15px;"></div>
             <p id="readText"></p>
             <button id="closeReadBtn" class="btn-enviar" style="margin-top: 10px;">Ouvir a Rádio</button>
         </div>
     </div>
 
-    <div id="version-badge">v0.48 • Atualizado</div>
+    <div id="version-badge">v0.50 • Atualizado</div>
 
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.48";
+        var versaoLocalSite = "0.50";
         var defaultCover = "https://zarafm.xyz/zaralogo.png?v=3";
-        // Palette kept deliberately far from the card's own pink/brown branding
-        // (the old palette included #efa39a/#f7cac9 — the same colors as the
-        // background — so those ear segments used to visually vanish).
+        var globalCipher = null; 
+        
         var earPalette = ["#2d2d2d", "#ffffff", "#ff6b6b", "#4cd7d0", "#3b82f6", "#a855f7", "#facc15", "#22c55e"];
-
-        // Geometria compartilhada entre o gerador (drawStyledCatEars) e o leitor
-        // (sampleEarIndices). Única fonte da verdade — mudou aqui, muda os dois.
         var CARD_W = 300, CARD_H = 480;
         var EAR_START_X = 22, EAR_START_Y = 320, EAR_W = 50, EAR_H = 80, EAR_GAP = 4;
         var EAR_BASE_Y = EAR_START_Y + EAR_H;
@@ -396,17 +414,6 @@
             ctx.quadraticCurveTo(x, y + height, x, y + height - radius); ctx.lineTo(x, y + radius);
             ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath(); ctx.fill();
         }
-
-        // --- ZaraCode encoding: fully self-contained, no server/database needed ---
-        // The code doesn't hash the title — it encodes the song's iTunes track ID
-        // directly into the 15 color slots (5 ears x 3 slots). Anyone who scans
-        // it decodes that number and asks Apple's free, public lookup API what
-        // song it is. No backend, no storage, no RAM cost on your side.
-        //
-        // Slots 0-11 (36 bits, base-8): the track ID (fits any ID up to ~68.7 billion,
-        //   far above real iTunes IDs).
-        // Slots 12-14 (9 bits): a checksum of slots 0-11, so a blurry/misread photo
-        //   is detected and rejected instead of silently showing the wrong song.
 
         function computeZaraChecksum(idDigits) {
             var sum = 0;
@@ -421,7 +428,7 @@
             var checksum = computeZaraChecksum(idDigits);
             var checksumDigits = [];
             for (var i = 0; i < 3; i++) { checksumDigits.push(checksum % 8); checksum = Math.floor(checksum / 8); }
-            return idDigits.concat(checksumDigits); // 15 values total
+            return idDigits.concat(checksumDigits);
         }
 
         function digitsToNumber(digits) {
@@ -430,8 +437,6 @@
             return value;
         }
 
-        // Returns the decoded track ID, or null if the checksum doesn't match
-        // (meaning the photo was misread and shouldn't be trusted).
         function decodeZaraCode(indices) {
             var idDigits = indices.slice(0, 12);
             var checksumDigits = indices.slice(12, 15);
@@ -479,7 +484,8 @@
             });
         }
 
-        // --- FLUFFYTAG (QR) ---
+
+        // --- FLUFFYTAG (QR COM SENHA E DADOS BRUTOS) ---
         var fluffyTrack = null;
         var fluffyCurrentUrl = "";
 
@@ -488,50 +494,27 @@
             renderFluffyCard();
         });
 
+        document.getElementById('fluffyGearBtn').addEventListener('click', function() {
+            var p = document.getElementById('fluffySettingsPanel');
+            p.style.display = p.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.getElementById('fluffyPinInput').addEventListener('input', renderFluffyCard);
+
         function renderFluffyCard() {
-            if (fluffyTrack && fluffyTrack.id) {
-                buildFluffyCard(fluffyTrack.title, fluffyTrack.artist, fluffyTrack.cover, fluffyTrack.id);
-                return;
-            }
+            var title = fluffyTrack ? fluffyTrack.title : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM");
+            var artist = fluffyTrack ? fluffyTrack.artist : "A rádio mais felina";
+            var coverUrl = fluffyTrack ? fluffyTrack.cover : defaultCover;
+            var pin = document.getElementById('fluffyPinInput').value.trim();
+            
+            var rawData = title + "|" + artist + "|" + coverUrl + "|" + new Date().toLocaleDateString('pt-BR');
 
-            var current = songTitleText.innerText;
-            if (current && current !== "Aguardando rádio...") {
-                fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(current) + '&entity=song&limit=1')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.results && data.results.length) {
-                            var t = data.results[0];
-                            buildFluffyCard(t.trackName, t.artistName, t.artworkUrl100.replace('100x100bb', '200x200bb'), t.trackId);
-                        } else {
-                            showFluffyPlaceholder();
-                        }
-                    })
-                    .catch(showFluffyPlaceholder);
+            if (pin && pin.length === 4) {
+                var enc = CryptoJS.AES.encrypt(rawData, pin).toString();
+                fluffyCurrentUrl = "https://zarafm.xyz/?miau=enc_" + btoa(encodeURIComponent(enc));
             } else {
-                showFluffyPlaceholder();
+                fluffyCurrentUrl = "https://zarafm.xyz/?miau=" + btoa(encodeURIComponent(rawData));
             }
-        }
-
-        function showFluffyPlaceholder() {
-            var canvas = document.getElementById('fluffyCanvas');
-            var ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, 300, 460);
-            ctx.fillStyle = '#efa39a';
-            roundRect(ctx, 0, 0, 300, 460, 24);
-            ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = '#462c26'; ctx.textAlign = 'center';
-            ctx.font = 'bold 16px "Fredoka", sans-serif';
-            ctx.fillText('Busque uma música 🔍', 150, 225);
-            ctx.font = '13px "Fredoka", sans-serif'; ctx.globalAlpha = 0.75;
-            ctx.fillText('para gerar o Fluffytag', 150, 248);
-            ctx.globalAlpha = 1.0;
-            document.getElementById('downloadFluffyBtn').style.display = 'none';
-        }
-
-        function buildFluffyCard(title, artist, coverUrl, trackId) {
-            // The QR encodes only the iTunes track ID (small payload => always the
-            // same low QR version => crisp, consistent cells for every song).
-            fluffyCurrentUrl = "https://zarafm.xyz/?miau=" + trackId;
 
             var canvas = document.getElementById('fluffyCanvas');
             var ctx = canvas.getContext('2d');
@@ -573,8 +556,6 @@
                 for (var r = 0; r < modCount; r++) {
                     for (var c = 0; c < modCount; c++) {
                         if (qr.isDark(r, c)) {
-                            // Round each cell's edges to whole pixels so adjacent
-                            // modules can never leave a gap or overlap.
                             var x0 = Math.round(qrX + c * cellSize);
                             var x1 = Math.round(qrX + (c + 1) * cellSize);
                             var y0 = Math.round(qrY + r * cellSize);
@@ -589,6 +570,7 @@
 
         document.getElementById('fluffyBtn').addEventListener('click', function() {
             fluffyTrack = null; document.getElementById('fluffySearchInput').value = "";
+            document.getElementById('fluffyPinInput').value = "";
             renderFluffyCard();
             document.getElementById('fluffyModal').style.display = 'flex';
         });
@@ -603,7 +585,7 @@
         });
 
 
-        // --- ZARACODE (ORELHAS DE GATO — CÓDIGO AUTOCONTIDO VIA ID DO ITUNES) ---
+        // --- ZARACODE (ORELHAS COM ID DA API ITUNES) ---
         var earTrack = null;
 
         setupItunesSearch('earSearchInput', 'earSearchResults', function(track) {
@@ -679,8 +661,6 @@
                 ctx.fillText(a.length > 28 ? a.substring(0, 25) + "..." : a, 150, 288);
                 ctx.globalAlpha = 1.0;
 
-                // Uses the shared geometry constants (CARD_W/EAR_*) so the scanner
-                // can never drift out of sync with the drawing.
                 var startX = EAR_START_X, startY = EAR_START_Y, earW = EAR_W, earH = EAR_H, gap = EAR_GAP;
                 var tipY = startY - 6, baseY = EAR_BASE_Y;
 
@@ -697,8 +677,6 @@
                         ctx.closePath();
                     }; })(x, cx);
 
-                    // One clean silhouette split into two big, unambiguous
-                    // solid halves (l, r) — easier to read back reliably.
                     ctx.save();
                     earPath();
                     ctx.clip();
@@ -708,7 +686,6 @@
                     ctx.fillStyle = earPalette[r];
                     ctx.fillRect(cx, tipY - 10, (earW / 2) + 10, earH + 20);
 
-                    // Soft glossy highlight near the tip, purely cosmetic.
                     ctx.beginPath();
                     ctx.ellipse(cx, tipY + 20, 7, 13, -0.35, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255,255,255,0.28)';
@@ -719,7 +696,6 @@
                     ctx.strokeStyle = '#462c26'; ctx.lineWidth = 2.5;
                     ctx.stroke();
 
-                    // Third data value (b) as a small solid accent dot.
                     ctx.beginPath();
                     ctx.arc(cx, baseY - 24, 6, 0, Math.PI * 2);
                     ctx.fillStyle = earPalette[b];
@@ -751,15 +727,11 @@
         });
 
 
-        // =====================================================================
-        // --- SCANNER (câmera ou foto) — Fluffytag usa jsQR; ZaraCode usa o
-        // pipeline novo: amostragem com votação (L1) + OpenCV.js para achar o
-        // card e corrigir perspectiva (L2) + auto-captura ao vivo (L3).
-        // =====================================================================
+        // --- SCANNER UNIFICADO (FLUFFYTAG / ZARACODE) ---
         var currentScanMode = 'ear';
         var cameraStream = null;
-        var cameraScanInterval = null;   // loop do Fluffytag (QR real)
-        var earAutoScanInterval = null;  // loop do ZaraCode (auto-captura)
+        var cameraScanInterval = null;
+        var earAutoScanInterval = null;
         var earDecodeBusy = false;
 
         function setEarStatus(msg) {
@@ -772,14 +744,10 @@
             var isEar = mode === 'ear';
             document.getElementById('scannerModalTitle').innerText = isEar ? '📷 Ler ZaraCode' : '📷 Ler Fluffytag';
             document.getElementById('scannerModalText').innerText = isEar
-                ? 'A leitura é automática: enquadre o card (pode inclinar, girar ou afastar) e espere. A guia é só uma ajuda — ou envie uma foto.'
+                ? 'A leitura é automática: enquadre APENAS as orelhinhas dentro da guia para ler.'
                 : 'Toque em "Usar Câmera" e aponte para o QR — a leitura é automática. Ou envie uma foto.';
             document.getElementById('earScanStatus').style.display = isEar ? 'block' : 'none';
-            if (isEar) {
-                setEarStatus('');
-                // Pré-carrega o leitor avançado em segundo plano (primeira vez só).
-                ensureOpenCv().catch(function() {});
-            }
+            if (isEar) setEarStatus('');
             document.getElementById('scannerModal').style.display = 'flex';
         }
 
@@ -813,16 +781,11 @@
 
                 video.onloadedmetadata = function() {
                     if (currentScanMode === 'ear') {
-                        // ZaraCode: guia continua visível (ajuda a enquadrar e serve
-                        // de fallback), mas agora a leitura é automática — L3.
                         updateGuideOverlay();
                         document.getElementById('captureFrameBtn').style.display = 'block';
-                        ensureOpenCv().catch(function() {}); // aquece o leitor avançado
                         setEarStatus('Aponte para o card — a leitura é automática 🔍');
                         earAutoScanInterval = setInterval(autoScanEarFrame, 650);
                     } else {
-                        // A real QR: jsQR handles position/rotation/scale detection
-                        // on its own, so keep scanning full frames automatically.
                         document.getElementById('scannerGuide').style.display = 'none';
                         document.getElementById('captureFrameBtn').style.display = 'none';
                         cameraScanInterval = setInterval(scanFluffyFrame, 300);
@@ -853,15 +816,18 @@
             if (cameraStream && currentScanMode === 'ear') updateGuideOverlay();
         });
 
+        // GUIA HORIZONTAL (FOCADA SÓ NAS ORELHINHAS)
         function updateGuideOverlay() {
             var video = document.getElementById('scannerVideo');
             var guide = document.getElementById('scannerGuide');
             if (!video.videoWidth) return;
             var displayedW = video.clientWidth;
             var displayedH = video.clientHeight;
-            var guideW = displayedW * 0.62;
-            var guideH = guideW * (480 / 300);
-            if (guideH > displayedH * 0.92) { guideH = displayedH * 0.92; guideW = guideH * (300 / 480); }
+            
+            // As orelhas têm 266px de largura por 86px de altura na geometria do canvas.
+            var guideW = displayedW * 0.85;
+            var guideH = guideW / 3.09; 
+            
             guide.style.width = guideW + 'px';
             guide.style.height = guideH + 'px';
             guide.style.left = ((displayedW - guideW) / 2) + 'px';
@@ -869,14 +835,11 @@
             guide.style.display = 'block';
         }
 
-        // Mesma matemática do updateGuideOverlay, mas em coordenadas do vídeo
-        // nativo — usada pela auto-captura (L3) sem depender do DOM.
         function guideRectForVideo(video) {
             var displayedW = video.clientWidth;
             var displayedH = video.clientHeight;
-            var guideW = displayedW * 0.62;
-            var guideH = guideW * (480 / 300);
-            if (guideH > displayedH * 0.92) { guideH = displayedH * 0.92; guideW = guideH * (300 / 480); }
+            var guideW = displayedW * 0.85;
+            var guideH = guideW / 3.09;
             var scale = video.videoWidth / displayedW;
             return {
                 sx: ((displayedW - guideW) / 2) * scale,
@@ -886,40 +849,32 @@
             };
         }
 
-        // L3: a cada intervalo, recorta a região central (equivalente à guia) e
-        // tenta decodificar. Se o OpenCV já carregou, o caminho avançado encontra
-        // o card mesmo FORA da guia / inclinado. Sucesso => resultado automático.
         function autoScanEarFrame() {
             if (earDecodeBusy || currentScanMode !== 'ear' || !cameraStream) return;
             var video = document.getElementById('scannerVideo');
             if (!video.videoWidth) return;
             var rct = guideRectForVideo(video);
             var canvas = document.getElementById('scannerCaptureCanvas');
-            canvas.width = CARD_W; canvas.height = CARD_H;
+            canvas.width = 266; canvas.height = 86;
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, CARD_W, CARD_H);
+            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, 266, 86);
             runEarDecode(canvas, false);
         }
 
-        // Botão Capturar: continua existindo como fallback manual.
         document.getElementById('captureFrameBtn').addEventListener('click', function() {
             var video = document.getElementById('scannerVideo');
-            var guide = document.getElementById('scannerGuide');
             if (!video.videoWidth) return;
-
-            var scale = video.videoWidth / video.clientWidth;
-            var sx = parseFloat(guide.style.left) * scale;
-            var sy = parseFloat(guide.style.top) * scale;
-            var sw = parseFloat(guide.style.width) * scale;
-            var sh = parseFloat(guide.style.height) * scale;
-
+            var rct = guideRectForVideo(video);
             var canvas = document.getElementById('scannerCaptureCanvas');
-            canvas.width = CARD_W; canvas.height = CARD_H;
+            canvas.width = 266; canvas.height = 86;
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(video, sx, sy, sw, sh, 0, 0, CARD_W, CARD_H);
+            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, 266, 86);
             runEarDecode(canvas, false);
         });
 
+        // ----------------------------------------------------
+        // LÓGICA DE PROCESSAMENTO FLUFFYTAG (QR E SENHA)
+        // ----------------------------------------------------
         function scanFluffyFrame() {
             var video = document.getElementById('scannerVideo');
             if (!video.videoWidth) return;
@@ -930,40 +885,6 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             tryDecodeFluffyFromCanvas(canvas, ctx, false);
         }
-
-        document.getElementById('scannerFileInput').addEventListener('change', function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-            var reader = new FileReader();
-            reader.onload = function(event) {
-                var img = new Image();
-                img.onload = function() {
-                    var canvas = document.createElement('canvas');
-                    var ctx;
-                    if (currentScanMode === 'fluffy') {
-                        // Real QR — keep native resolution; jsQR finds it itself.
-                        canvas.width = img.naturalWidth;
-                        canvas.height = img.naturalHeight;
-                        ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        tryDecodeFluffyFromCanvas(canvas, ctx, true);
-                    } else {
-                        // ZaraCode — sem exigência de enquadramento: manda a foto
-                        // inteira (com limite de tamanho por performance) para o
-                        // pipeline que localiza o card e corrige a perspectiva.
-                        var s = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
-                        canvas.width = Math.round(img.naturalWidth * s);
-                        canvas.height = Math.round(img.naturalHeight * s);
-                        ctx = canvas.getContext('2d', { willReadFrequently: true });
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        runEarDecode(canvas, true);
-                    }
-                    document.getElementById('scannerFileInput').value = "";
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
 
         function tryDecodeFluffyFromCanvas(canvas, ctx, isUpload) {
             if (typeof jsQR === 'undefined') {
@@ -982,7 +903,7 @@
                 }
                 return;
             }
-            var match = result.data.match(/[?&]miau=(\d+)/);
+            var match = result.data.match(/[?&]miau=([^&]+)/);
             if (!match) {
                 if (isUpload) {
                     mostrarResultadoLeitura({
@@ -994,303 +915,143 @@
                 return;
             }
             closeScanner();
-            lookupTrackAndShow(match[1]);
+            tratarDadosLeitura(match[1]);
         }
 
-        // ---------------------------------------------------------------------
-        // PIPELINE ZARACODE
-        // ---------------------------------------------------------------------
-
-        // Orquestrador. Retorna o trackId via Promise, ou null se falhar.
-        // Ordem de tentativas:
-        //   1) Amostragem direta (card já preenche a imagem: guia/print)     — L1
-        //   2) Localizar card pela máscara rosa + warp de perspectiva (4     — L2
-        //      rotações, cobre foto de lado / de cabeça pra baixo)
-        //   3) Fallback: esticar a imagem inteira pro tamanho do card
-        function runEarDecode(canvas, isUpload) {
-            if (earDecodeBusy) return;
-            earDecodeBusy = true;
-            if (!isUpload) setEarStatus('Procurando o ZaraCode... 🔍');
-
-            attemptEarDecode(canvas, !!isUpload).then(function(trackId) {
-                earDecodeBusy = false;
-                if (trackId === null) {
-                    if (isUpload) {
-                        mostrarResultadoLeitura({
-                            title: "Não consegui ler esse código 😿",
-                            artist: "Fotografe o card inteiro, de perto e bem iluminado, sobre um fundo que contraste. Inclinar pode!",
-                            cover: defaultCover
-                        });
-                    } else {
-                        setEarStatus('Ainda nada... aproxime o card e mantenha-o bem visível 🐾');
-                    }
-                    return;
-                }
-                setEarStatus('Código lido! 🎉');
-                closeScanner();
-                lookupTrackAndShow(trackId);
-            }).catch(function() {
-                earDecodeBusy = false;
-            });
-        }
-
-        function attemptEarDecode(canvas, waitForCv) {
-            // 1) Direto: rápido e sem dependências.
-            var direct = sampleAndDecode(canvas);
-            if (direct !== null) return Promise.resolve(direct);
-
-            // 2) Avançado: precisa do OpenCV.js. Em frames de câmera NÃO esperamos
-            //    o download (só o aquecemos); em upload esperamos, porque a foto é
-            //    única e vale a pena aguardar o leitor bom.
-            if (!cvReadyNow()) {
-                if (!waitForCv) {
-                    ensureOpenCv().catch(function() {});
-                    return Promise.resolve(null);
-                }
-                setEarStatus('Carregando leitor avançado... (só na primeira vez) ⏳');
-            }
-
-            return ensureOpenCv().then(function() {
-                var id = tryWarpDecode(canvas);
-                if (id !== null) return id;
-                // 3) Fallback final: prints/recortes exatos do card.
-                return sampleAndDecode(squashToCard(canvas));
-            }).catch(function() {
-                // OpenCV falhou (sem internet p/ CDN, etc.) — segue com o básico.
-                return sampleAndDecode(squashToCard(canvas));
-            });
-        }
-
-        function cvReadyNow() {
-            return typeof cv !== 'undefined' && cv.Mat;
-        }
-
-        function tryWarpDecode(canvas) {
-            if (!cvReadyNow()) return null;
-            var quads;
-            try { quads = findCardQuads(canvas); } catch (e) { return null; }
-            for (var q = 0; q < quads.length; q++) {
-                var warped;
-                try { warped = warpCardToCanvas(canvas, quads[q]); } catch (e) { warped = null; }
-                if (!warped) continue;
-                // 4 rotações: foto tirada de lado ou invertida também funciona.
-                for (var r = 0; r < 4; r++) {
-                    var id = sampleAndDecode(r ? rotateCanvas(warped, r * 90) : warped);
-                    if (id !== null) return id;
-                }
-            }
-            return null;
-        }
-
-        // --- OpenCV.js lazy loader (~10MB, baixado só quando for escanear
-        //     ZaraCode; depois o navegador/service worker cacheia) ---
-        var openCvLoadPromise = null;
-        var openCvFailedAt = 0;
-
-        function ensureOpenCv() {
-            if (cvReadyNow()) return Promise.resolve();
-            if (openCvLoadPromise) return openCvLoadPromise;
-            if (openCvFailedAt && (Date.now() - openCvFailedAt) < 60000) {
-                return Promise.reject(new Error('cooldown'));
-            }
-            openCvLoadPromise = new Promise(function(resolve, reject) {
-                var s = document.createElement('script');
-                s.src = 'https://docs.opencv.org/4.8.0/opencv.js';
-                s.async = true;
-                s.onload = function() { waitForOpenCv(30000).then(resolve, reject); };
-                s.onerror = function() { reject(new Error('load failed')); };
-                document.head.appendChild(s);
-            });
-            return openCvLoadPromise.then(null, function(e) {
-                openCvLoadPromise = null;
-                openCvFailedAt = Date.now();
-                throw e;
-            });
-        }
-
-        function waitForOpenCv(timeoutMs) {
-            return new Promise(function(resolve, reject) {
-                var started = Date.now();
-                (function poll() {
-                    if (typeof cv !== 'undefined') {
-                        if (cv.Mat) { resolve(); return; }
-                        if (typeof cv.then === 'function') {
-                            cv.then(function(m) { window.cv = m; resolve(); }, reject);
-                            return;
-                        }
-                        // Build clássico: espera o runtime WASM inicializar.
-                        try { cv.onRuntimeInitialized = function() { if (cv.Mat) resolve(); }; } catch (e) {}
-                    }
-                    if (Date.now() - started > (timeoutMs || 30000)) { reject(new Error('timeout')); return; }
-                    setTimeout(poll, 120);
-                })();
-            });
-        }
-
-        // L2: encontra o card (maior região rosa — a cor de fundo do card é uma
-        // "assinatura" própria) e devolve os 4 cantos ordenados.
-        function findCardQuads(srcCanvas) {
-            var src = cv.imread(srcCanvas);
-            var quads = [];
-            var work = null, rgb = null, hsv = null, mask = null, mask2 = null;
-            var low1 = null, high1 = null, low2 = null, high2 = null;
-            var kernel = null, contours = null, hierarchy = null;
+        function tratarDadosLeitura(param) {
+            if (!param) return;
             try {
-                var maxDim = Math.max(src.cols, src.rows);
-                var scale = Math.min(1, 900 / maxDim);
-                work = new cv.Mat();
-                if (scale < 1) {
-                    cv.resize(src, work, new cv.Size(Math.round(src.cols * scale), Math.round(src.rows * scale)), 0, 0, cv.INTER_AREA);
+                if (param.startsWith('enc_')) {
+                    globalCipher = decodeURIComponent(atob(param.replace('enc_', '')));
+                    document.getElementById('pinModal').style.display = 'flex';
                 } else {
-                    src.copyTo(work);
+                    var dec = decodeURIComponent(atob(param));
+                    mostrarResultadoLeituraData(dec.split('|'));
                 }
+            } catch(e) { alert("Tag inválida."); }
+        }
 
-                rgb = new cv.Mat();
-                cv.cvtColor(work, rgb, cv.COLOR_RGBA2RGB);
-                hsv = new cv.Mat();
-                cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
-
-                // Rosa do card (#efa39a => H≈3 na escala do OpenCV) com folga para
-                // variação de luz/white balance. Duas faixas de matiz cobrem
-                // câmeras que puxam o tom pro magenta (H~175).
-                low1  = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [0, 30, 100]);
-                high1 = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [20, 180, 255]);
-                low2  = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [170, 30, 100]);
-                high2 = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [180, 180, 255]);
-                mask = new cv.Mat();
-                cv.inRange(hsv, low1, high1, mask);
-                mask2 = new cv.Mat();
-                cv.inRange(hsv, low2, high2, mask2);
-                cv.bitwise_or(mask, mask2, mask);
-
-                kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9));
-                cv.morphologyEx(mask, mask, cv.MORPH_CLOSE, kernel);
-                cv.morphologyEx(mask, mask, cv.MORPH_OPEN, kernel);
-
-                contours = new cv.MatVector();
-                hierarchy = new cv.Mat();
-                cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-                var bestIdx = -1, bestArea = 0;
-                for (var i = 0; i < contours.size(); i++) {
-                    var a = cv.contourArea(contours.get(i));
-                    if (a > bestArea) { bestArea = a; bestIdx = i; }
-                }
-                // O card precisa ocupar uma parte razoável da imagem, senão o
-                // warp vira ruído puro.
-                if (bestIdx >= 0 && bestArea > work.cols * work.rows * 0.08) {
-                    var cnt = contours.get(bestIdx);
-                    var hull = new cv.Mat();
-                    cv.convexHull(cnt, hull);
-                    var peri = cv.arcLength(hull, true);
-                    var approx = new cv.Mat();
-                    for (var eps = 0.02; eps <= 0.081; eps += 0.015) {
-                        cv.approxPolyDP(hull, approx, eps * peri, true);
-                        if (approx.rows === 4 && approx.cols === 1) break;
-                    }
-                    if (approx.rows === 4) {
-                        var pts = [];
-                        for (var p = 0; p < 4; p++) {
-                            pts.push({ x: approx.data32S[p * 2] / scale, y: approx.data32S[p * 2 + 1] / scale });
-                        }
-                        quads.push(orderQuadPoints(pts));
-                    }
-                    approx.delete(); hull.delete(); cnt.delete();
-                }
-            } finally {
-                if (hierarchy) hierarchy.delete();
-                if (contours) contours.delete();
-                if (kernel) kernel.delete();
-                if (mask2) mask2.delete();
-                if (mask) mask.delete();
-                if (low1) low1.delete(); if (high1) high1.delete();
-                if (low2) low2.delete(); if (high2) high2.delete();
-                if (hsv) hsv.delete();
-                if (rgb) rgb.delete();
-                if (work) work.delete();
-                src.delete();
+        // Verifica a URL no carregamento inicial para Deep Links com QR
+        window.addEventListener('DOMContentLoaded', function() {
+            var params = new URLSearchParams(window.location.search);
+            if (params.has('miau')) {
+                tratarDadosLeitura(params.get('miau'));
+                window.history.replaceState({}, '', window.location.pathname);
             }
-            return quads;
-        }
+        });
 
-        function orderQuadPoints(pts) {
-            // TL = menor soma x+y, BR = maior, TR = maior diferença x-y, BL = menor.
-            var bySum = pts.slice().sort(function(a, b) { return (a.x + a.y) - (b.x + b.y); });
-            var byDiff = pts.slice().sort(function(a, b) { return (a.x - a.y) - (b.x - b.y); });
-            return { tl: bySum[0], tr: byDiff[3], br: bySum[3], bl: byDiff[0] };
-        }
-
-        // Recorta o quadrilátero encontrado e endireita para o tamanho exato do
-        // card (300x480) — a partir daí a geometria das orelhas se aplica 1:1.
-        function warpCardToCanvas(srcCanvas, quad) {
-            var src = cv.imread(srcCanvas);
-            var dst = new cv.Mat();
-            var M = null, srcTri = null, dstTri = null, out = null;
+        document.getElementById('unlockPinBtn').addEventListener('click', function() {
+            var pin = document.getElementById('pinUnlockInput').value.trim();
             try {
-                srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-                    quad.tl.x, quad.tl.y,
-                    quad.tr.x, quad.tr.y,
-                    quad.br.x, quad.br.y,
-                    quad.bl.x, quad.bl.y
-                ]);
-                dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, CARD_W, 0, CARD_W, CARD_H, 0, CARD_H]);
-                M = cv.getPerspectiveTransform(srcTri, dstTri);
-                cv.warpPerspective(src, dst, M, new cv.Size(CARD_W, CARD_H), cv.INTER_LINEAR, cv.BORDER_REPLICATE);
-                out = document.createElement('canvas');
-                out.width = CARD_W; out.height = CARD_H;
-                cv.imshow(out, dst);
-            } finally {
-                if (M) M.delete();
-                if (srcTri) srcTri.delete();
-                if (dstTri) dstTri.delete();
-                dst.delete();
-                src.delete();
-            }
-            return out;
+                var bytes = CryptoJS.AES.decrypt(globalCipher, pin);
+                var text = bytes.toString(CryptoJS.enc.Utf8);
+                var parts = text.split('|');
+                if (parts.length >= 2) {
+                    document.getElementById('pinModal').style.display = 'none';
+                    document.getElementById('pinErrorText').style.display = 'none';
+                    mostrarResultadoLeituraData(parts);
+                } else {
+                    document.getElementById('pinErrorText').style.display = 'block';
+                }
+            } catch(e) { document.getElementById('pinErrorText').style.display = 'block'; }
+        });
+
+        function mostrarResultadoLeituraData(parts) {
+            var title = parts[0], artist = parts[1], cover = parts[2] || defaultCover, date = parts[3] || "um dia especial";
+            document.getElementById('readCoverContainer').innerHTML = `<img src="${cover}" style="width: 140px; border-radius: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">`;
+            document.getElementById('readText').innerHTML = `Em <strong>${date}</strong>, essa lembrança marcou presença:<br><br><strong>${title}</strong><br><span style="font-size:0.85rem; opacity:0.8">${artist}</span>`;
+            document.getElementById('readModal').style.display = 'flex';
         }
 
-        function rotateCanvas(src, degrees) {
-            if (!degrees) return src;
-            var out = document.createElement('canvas');
-            var swap = (degrees === 90 || degrees === 270);
-            out.width = swap ? src.height : src.width;
-            out.height = swap ? src.width : src.height;
-            var ctx = out.getContext('2d', { willReadFrequently: true });
-            ctx.translate(out.width / 2, out.height / 2);
-            ctx.rotate(degrees * Math.PI / 180);
-            ctx.drawImage(src, -src.width / 2, -src.height / 2);
-            return out;
-        }
+        // ----------------------------------------------------
+        // LÓGICA DE UPLOAD E LEITURA (ARQUIVO MISTO)
+        // ----------------------------------------------------
+        document.getElementById('scannerFileInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    var ctx;
+                    if (currentScanMode === 'fluffy') {
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        tryDecodeFluffyFromCanvas(canvas, ctx, true);
+                    } else {
+                        var s = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+                        canvas.width = Math.round(img.naturalWidth * s);
+                        canvas.height = Math.round(img.naturalHeight * s);
+                        ctx = canvas.getContext('2d', { willReadFrequently: true });
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        runEarDecode(canvas, true);
+                    }
+                    document.getElementById('scannerFileInput').value = "";
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
 
-        function squashToCard(src) {
-            var out = document.createElement('canvas');
-            out.width = CARD_W; out.height = CARD_H;
-            out.getContext('2d', { willReadFrequently: true }).drawImage(src, 0, 0, CARD_W, CARD_H);
-            return out;
-        }
-
-        // ---------------------------------------------------------------------
-        // L1: amostragem com votação. Cada zona (metade esquerda, metade direita
-        // e bolinha de cada orelha) recebe uma grade 3x3 de amostras; amostras
-        // muito distantes de QUALQUER cor da paleta (fundo rosa, reflexo branco,
-        // sombra) são descartadas em vez de forçadas para a cor errada; a zona
-        // só é aceita com maioria clara entre as amostras válidas.
-        // ---------------------------------------------------------------------
+        // ----------------------------------------------------
+        // LÓGICA DE PROCESSAMENTO ZARACODE (NATIVA/RÁPIDA)
+        // ----------------------------------------------------
         var HALF_OFFSETS = [[-6,-6],[0,-6],[6,-6],[-6,0],[0,0],[6,0],[-6,6],[0,6],[6,6]];
         var DOT_OFFSETS  = [[-3,-3],[0,-3],[3,-3],[-3,0],[0,0],[3,0],[-3,3],[0,3],[3,3]];
 
-        function sampleAndDecode(canvas) {
-            var res = sampleEarIndices(canvas);
+        function runEarDecode(canvas, isUpload) {
+            if (earDecodeBusy) return;
+            earDecodeBusy = true;
+            if (!isUpload) setEarStatus('Analisando orelhinhas... 🐾');
+
+            var trackId = null;
+            if (isUpload) {
+                var isFullCard = (canvas.height >= canvas.width * 1.2);
+                var targetW = isFullCard ? 300 : 266;
+                var targetH = isFullCard ? 480 : 86;
+                var tempCanvas = document.createElement('canvas');
+                tempCanvas.width = targetW; tempCanvas.height = targetH;
+                tempCanvas.getContext('2d').drawImage(canvas, 0, 0, targetW, targetH);
+                trackId = sampleAndDecode(tempCanvas, isFullCard);
+            } else {
+                trackId = sampleAndDecode(canvas, false);
+            }
+
+            earDecodeBusy = false;
+            if (trackId === null) {
+                if (isUpload) {
+                    mostrarResultadoLeitura({
+                        title: "Não consegui ler esse código 😿",
+                        artist: "Se estiver enviando uma foto, tente enviar com o card completo, ou focado e cortado na faixa horizontal das orelhas.",
+                        cover: defaultCover
+                    });
+                } else {
+                    setEarStatus('Ainda nada... alinhe as orelhas perfeitamente dentro da guia 🐾');
+                }
+                return;
+            }
+            setEarStatus('Código lido! 🎉');
+            closeScanner();
+            lookupTrackAndShow(trackId);
+        }
+
+        function sampleAndDecode(canvas, isFullCard) {
+            var res = sampleEarIndices(canvas, isFullCard);
             if (!res) return null;
             return decodeZaraCode(res.indices);
         }
 
-        function sampleEarIndices(canvas) {
+        function sampleEarIndices(canvas, isFullCard) {
             var W = canvas.width, H = canvas.height;
-            if (W < 200 || H < 320) return null;
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
             var img = ctx.getImageData(0, 0, W, H).data;
-            var mx = W / CARD_W, my = H / CARD_H;
+
+            var targetW = isFullCard ? 300 : 266;
+            var targetH = isFullCard ? 480 : 86;
+            var mx = W / targetW, my = H / targetH;
             var patchHalf = Math.max(1, Math.round(3 * Math.min(mx, my)));
 
             function zoneVotes(vx, vy, offsets) {
@@ -1314,23 +1075,42 @@
 
             var indices = [], failed = 0;
             for (var i = 0; i < 5; i++) {
-                var x = EAR_START_X + i * (EAR_W + EAR_GAP);
+                var x = i * 54; 
+                var vxEsquerda, vyEsquerda, vxDireita, vyDireita, vxBolinha, vyBolinha;
+
+                if (isFullCard) {
+                    var fullX = x + 22;
+                    vxEsquerda = fullX + 14; vyEsquerda = 388;
+                    vxDireita = fullX + 36;  vyDireita = 388;
+                    vxBolinha = fullX + 25;  vyBolinha = 376;
+                } else {
+                    vxEsquerda = x + 14; vyEsquerda = 74;
+                    vxDireita = x + 36;  vyDireita = 74;
+                    vxBolinha = x + 25;  vyBolinha = 62;
+                }
+
                 var zones = [
-                    { vx: x + 14, vy: EAR_BASE_Y - 12, off: HALF_OFFSETS }, // metade esquerda
-                    { vx: x + 36, vy: EAR_BASE_Y - 12, off: HALF_OFFSETS }, // metade direita
-                    { vx: x + 25, vy: EAR_BASE_Y - 24, off: DOT_OFFSETS }   // bolinha
+                    { vx: vxEsquerda, vy: vyEsquerda, off: HALF_OFFSETS },
+                    { vx: vxDireita, vy: vyDireita, off: HALF_OFFSETS },
+                    { vx: vxBolinha, vy: vyBolinha, off: DOT_OFFSETS }
                 ];
+
                 for (var z = 0; z < zones.length; z++) {
                     var v = zoneVotes(zones[z].vx, zones[z].vy, zones[z].off);
-                    if (v === -1) { failed++; v = 0; } // neutro; o checksum rejeita
+                    if (v === -1) { failed++; v = 0; }
                     indices.push(v);
                 }
             }
+
+            // CORREÇÃO CRÍTICA DO BUG DE RECONHECER O VAZIO.
+            // Se falhar em reconhecer cores suficientes de qualquer zona, recusa tentar ler.
+            if (failed > 0) return null;
+            // E também evitar array inteiro zerado se a câmera estiver apontada para total escuridão/tela preta
+            if (indices.every(function(v) { return v === 0; })) return null;
+
             return { indices: indices, failedZones: failed };
         }
 
-        // Média de um pequeno patch NxN do ImageData já capturado — imune a
-        // ruído de JPEG e anti-aliasing das bordas dos formatos.
         function samplePatchAvg(img, W, H, cx, cy, half) {
             var x0 = Math.max(0, Math.round(cx - half)), y0 = Math.max(0, Math.round(cy - half));
             var x1 = Math.min(W - 1, Math.round(cx + half)), y1 = Math.min(H - 1, Math.round(cy + half));
@@ -1346,9 +1126,6 @@
         }
 
         function getClosestColorIndex(r, g, b) {
-            // "redmean" weighted distance — closer to how the eye (and a
-            // photo's color shifts) actually perceive differences than
-            // plain Euclidean RGB distance.
             var minDist = Infinity;
             var bestIdx = -1;
             for (var i = 0; i < earPalette.length; i++) {
@@ -1361,15 +1138,13 @@
                 var dist = ((2 + rmean / 256) * dr * dr) + (4 * dg * dg) + ((2 + (255 - rmean) / 256) * db * db);
                 if (dist < minDist) { minDist = dist; bestIdx = i; }
             }
-            // Rejeita qualquer coisa longe de TODAS as cores da paleta (fundo
-            // rosa do card, reflexo branco, sombra) em vez de adivinhar errado.
-            // Ajuste entre ~6000 e ~12000 depois de testar com fotos reais.
+            // Rejeita leitura no vazio, sombra extrema ou lixo branco
             if (minDist > 9000) return -1;
             return bestIdx;
         }
 
         function lookupTrackAndShow(trackId) {
-            mostrarResultadoLeitura({ title: "Verificando... 🔍", artist: "Consultando a faixa", cover: defaultCover });
+            mostrarResultadoLeitura({ title: "Verificando... 🔍", artist: "Consultando a faixa no banco da Apple", cover: defaultCover });
 
             fetch('https://itunes.apple.com/lookup?id=' + trackId)
                 .then(function(res) { return res.json(); })
@@ -1384,7 +1159,7 @@
                     } else {
                         mostrarResultadoLeitura({
                             title: "Faixa não encontrada",
-                            artist: "O código foi lido certinho, mas a música não está mais disponível no iTunes",
+                            artist: "O código é válido, mas a música já não está mais disponível na base.",
                             cover: defaultCover
                         });
                     }
@@ -1407,7 +1182,6 @@
         document.getElementById('closeReadBtn').addEventListener('click', function() {
             document.getElementById('readModal').style.display = 'none';
         });
-
 
         // --- PLAYER DE RÁDIO ---
         var audio = document.getElementById('audioStream');
