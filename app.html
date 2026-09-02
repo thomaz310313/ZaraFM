@@ -314,16 +314,10 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>🐱 ZaraCode</h2>
-                <button id="earGearBtn" class="gear-btn" title="Segurança">⚙️</button>
             </div>
             
             <input type="text" id="earSearchInput" class="input-pedido" placeholder="🔍 Buscar música (iTunes)...">
             <div id="earSearchResults" class="search-results"></div>
-
-            <div id="earSettingsPanel" class="settings-panel">
-                <label for="earPinInput">Senha (PIN 4 dígitos):</label>
-                <input type="password" id="earPinInput" class="input-pedido" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 4px;">
-            </div>
 
             <canvas id="earCanvas" class="card-preview" width="300" height="480"></canvas>
             
@@ -336,45 +330,35 @@
         </div>
     </div>
 
-    <!-- MODAL 3: SCANNER PROPRIETÁRIO DE ZARACODE (Upload de Imagem do Card) -->
+    <!-- MODAL 3: SCANNER PROPRIETÁRIO DE ZARACODE -->
     <div id="scannerEarModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2>📷 Ler ZaraCode</h2>
-            <p>Envie ou tire foto do card de orelhas para decodificar:</p>
+            <p>Envie a imagem do card de orelhas para decodificar:</p>
             <input type="file" id="uploadEarInput" accept="image/*" class="input-pedido" style="margin-top: 15px;">
             <button id="closeScannerEarBtn" class="btn-enviar" style="margin-top: 10px;">Cancelar</button>
-        </div>
-    </div>
-
-    <!-- MODAL: Digitar Senha -->
-    <div id="pinModal" class="modal-overlay" style="display:none; z-index: 1005;">
-        <div class="modal-content">
-            <h2>🔒 Card Protegido</h2>
-            <p>Digite a senha de 4 dígitos:</p>
-            <input type="password" id="pinUnlockInput" maxlength="4" class="input-pedido" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" placeholder="••••">
-            <button id="unlockPinBtn" class="btn-enviar">Desbloquear 🔓</button>
-            <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta!</p>
         </div>
     </div>
 
     <!-- MODAL: Resultado Revelado -->
     <div id="readModal" class="modal-overlay" style="display:none; z-index: 1010;">
         <div class="modal-content">
-            <h2>🎵 Memória Revelada!</h2>
+            <h2>🎵 ZaraCode Revelado!</h2>
             <div id="readCoverContainer" style="margin-bottom:15px;"></div>
             <p id="readText"></p>
             <button id="closeReadBtn" class="btn-enviar" style="margin-top: 10px;">Ouvir a Rádio</button>
         </div>
     </div>
 
-    <div id="version-badge">v0.44 • Atualizado</div>
+    <div id="version-badge">v0.45 • Atualizado</div>
 
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.44";
+        var versaoLocalSite = "0.45";
         var defaultCover = "https://zarafm.xyz/zaralogo.png?v=3";
         var earPalette = ["#462c26", "#efa39a", "#f7cac9", "#ff4757", "#2e7d32", "#1976d2", "#7b1fa2", "#ffb300"];
+        var safeChars = ['A', 'E', 'I', 'O', 'U', 'N', 'R', 'S'];
 
         function roundRect(ctx, x, y, width, height, radius) {
             ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
@@ -518,7 +502,7 @@
         });
 
 
-        // --- 2. ZARACODE (ORELHAS DE GATO ESTILIZADAS) ---
+        // --- 2. ZARACODE (ORELHAS DE GATO COM MAPEAMENTO DE CORES) ---
         var earTrack = null;
 
         setupItunesSearch('earSearchInput', 'earSearchResults', function(track) {
@@ -526,33 +510,17 @@
             renderEarCodeCard();
         });
 
-        document.getElementById('earGearBtn').addEventListener('click', function() {
-            var p = document.getElementById('earSettingsPanel');
-            p.style.display = p.style.display === 'block' ? 'none' : 'block';
-        });
-
-        document.getElementById('earPinInput').addEventListener('input', renderEarCodeCard);
-
         function renderEarCodeCard() {
             var title = earTrack ? earTrack.title : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM");
             var artist = earTrack ? earTrack.artist : "A rádio mais felina";
             var coverUrl = earTrack ? earTrack.cover : defaultCover;
-            var pin = document.getElementById('earPinInput').value.trim();
             
-            var rawData = title + "|" + artist + "|" + coverUrl + "|" + new Date().toLocaleDateString('pt-BR');
-            var payload = "";
-
-            if (pin && pin.length === 4) {
-                var enc = CryptoJS.AES.encrypt(rawData, pin).toString();
-                payload = "ear_enc_" + btoa(encodeURIComponent(enc));
-            } else {
-                payload = "ear_pub_" + btoa(encodeURIComponent(rawData));
-            }
-
+            // Gerar 15 índices baseados no título da música
+            var cleanTitle = title.toUpperCase();
             var colorIndices = [];
             for (var i = 0; i < 15; i++) {
-                var code = i < payload.length ? payload.charCodeAt(i) : 0;
-                colorIndices.push(code % 8);
+                var char = i < cleanTitle.length ? cleanTitle[i] : 'A';
+                colorIndices.push(char.charCodeAt(0) % 8);
             }
 
             var canvas = document.getElementById('earCanvas');
@@ -567,12 +535,12 @@
             img.onload = function() {
                 ctx.save(); ctx.beginPath(); ctx.roundRect(30, 25, 240, 210, 16); ctx.clip();
                 ctx.drawImage(img, 30, 25, 240, 210); ctx.restore();
-                drawStyledCatEars(colorIndices, title, artist, payload);
+                drawStyledCatEars(colorIndices, title, artist, coverUrl);
             };
-            img.onerror = function() { drawStyledCatEars(colorIndices, title, artist, payload); };
+            img.onerror = function() { drawStyledCatEars(colorIndices, title, artist, coverUrl); };
             img.src = coverUrl;
 
-            function drawStyledCatEars(colors, t, a, stringPayload) {
+            function drawStyledCatEars(colors, t, a, cUrl) {
                 ctx.fillStyle = '#462c26'; ctx.textAlign = 'center';
                 ctx.font = 'bold 20px "Fredoka", sans-serif';
                 ctx.fillText(t.length > 22 ? t.substring(0, 20) + "..." : t, 150, 265);
@@ -618,8 +586,10 @@
                     ctx.stroke();
                 }
 
-                // Guardamos o payload inteiro embutido no atributo customizado do canvas para o leitor recuperar se necessário
-                canvas.setAttribute('data-payload', stringPayload);
+                // Salvar metadados no canvas para a leitura instantânea
+                canvas.setAttribute('data-title', t);
+                canvas.setAttribute('data-artist', a);
+                canvas.setAttribute('data-cover', cUrl);
 
                 ctx.font = 'bold 12px "Fredoka", sans-serif'; ctx.fillStyle = '#462c26'; ctx.globalAlpha = 0.6;
                 ctx.fillText("🐾 ZARACODE • EXCLUSIVE", 150, 440); ctx.globalAlpha = 1.0;
@@ -630,7 +600,6 @@
 
         document.getElementById('earCodeBtn').addEventListener('click', function() {
             earTrack = null; document.getElementById('earSearchInput').value = "";
-            document.getElementById('earPinInput').value = "";
             renderEarCodeCard();
             document.getElementById('earCodeModal').style.display = 'flex';
         });
@@ -645,9 +614,7 @@
         });
 
 
-        // --- 3. MOTOR PROPRIETÁRIO DE LEITURA DE ZARACODE POR PIXEL DE COR ---
-        var globalCipher = null;
-
+        // --- 3. MOTOR DE LEITURA DE ZARACODE POR PIXEL ---
         document.getElementById('scanEarBtn').addEventListener('click', function() {
             document.getElementById('scannerEarModal').style.display = 'flex';
         });
@@ -669,18 +636,15 @@
                     var sCtx = scanCanvas.getContext('2d');
                     sCtx.drawImage(img, 0, 0, 300, 480);
 
-                    // Amostragem matemática exata nas coordenadas das orelhas
                     var sampledIndices = [];
                     var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
 
                     for (var i = 0; i < 5; i++) {
                         var x = startX + (i * (earW + gap));
-                        
-                        // Coordenadas amostradas (Esquerda, Direita, Base)
                         var samplePoints = [
-                            {px: x + 20, py: startY + 45}, // Esquerda
-                            {px: x + 30, py: startY + 45}, // Direita
-                            {px: x + 25, py: startY + 60}  // Base
+                            {px: x + 20, py: startY + 45}, 
+                            {px: x + 30, py: startY + 45}, 
+                            {px: x + 25, py: startY + 60}  
                         ];
 
                         samplePoints.forEach(pt => {
@@ -689,18 +653,19 @@
                         });
                     }
 
-                    // Reconstruir a string original
-                    var reconstructed = "";
+                    var reconstructedText = "";
                     for (var j = 0; j < sampledIndices.length; j++) {
-                        reconstructed += String.fromCharCode(sampledIndices[j] + 48);
+                        reconstructedText += safeChars[sampledIndices[j]];
                     }
 
-                    // Fechar modal e processar payload
                     document.getElementById('scannerEarModal').style.display = 'none';
                     document.getElementById('uploadEarInput').value = "";
                     
-                    // Como o payload usa indices matemáticos transformados de charCodes, geramos o espelho direto
-                    alert("ZaraCode lido com sucesso pelas orelhas! (Nota: Para máxima precisão de texto complexo com senha, use o gerador na mesma sessão).");
+                    mostrarResultadoLeitura({
+                        title: "ZaraCode ID: " + reconstructedText,
+                        artist: "Orelhas Felinas Escaneadas",
+                        cover: defaultCover
+                    });
                 };
                 img.src = event.target.result;
             };
@@ -720,6 +685,16 @@
             }
             return bestIdx;
         }
+
+        function mostrarResultadoLeitura(data) {
+            document.getElementById('readCoverContainer').innerHTML = `<img src="${data.cover}" style="width: 140px; border-radius: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">`;
+            document.getElementById('readText').innerHTML = `<strong>${data.title}</strong><br><span style="font-size:0.85rem; opacity:0.8">${data.artist}</span>`;
+            document.getElementById('readModal').style.display = 'flex';
+        }
+
+        document.getElementById('closeReadBtn').addEventListener('click', function() {
+            document.getElementById('readModal').style.display = 'none';
+        });
 
 
         // --- PLAYER DE RÁDIO ---
