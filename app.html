@@ -956,20 +956,72 @@
         }
 
         function tryDecodeEarFromCanvas(canvas, ctx, isUpload) {
-            if (canvas.width < 280 || canvas.height < 400) return;
+    if (canvas.width < 280 || canvas.height < 400) return;
 
-            var sampledIndices = [];
-            // Must match the geometry used in drawStyledCatEars above.
-            var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
-            var baseY = startY + earH;
+    // Same geometry as drawStyledCatEars — keep in sync!
+    var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
+    var baseY = startY + earH;
 
-            for (var i = 0; i < 5; i++) {
-                var x = startX + (i * (earW + gap));
-                var samplePoints = [
-                    {px: x + 14, py: baseY - 8},   // left half
-                    {px: x + 36, py: baseY - 8},   // right half
-                    {px: x + 25, py: baseY - 24}   // accent dot
-                ];
+    // 3x3 grid of samples per zone instead of a single point.
+    // Offsets are relative to each zone's anchor, in card pixels.
+    var ZONE_OFFSETS = [
+        [-8, -4], [0, -4], [8, -4],
+        [-8,  4], [0,  4], [8,  4],
+        [-8, 10], [0, 10], [8, 10]
+    ];
+
+    function votesForZone(px, py) {
+        var counts = {}; // palette index -> number of valid samples
+        var valid = 0;
+        for (var k = 0; k < ZONE_OFFSETS.length; k++) {
+            var sx = px + ZONE_OFFSETS[k][0];
+            var sy = py + ZONE_OFFSETS[k][1];
+            var avg = sampleAverageColor(ctx, sx, sy, 4);
+            var idx = getClosestColorIndex(avg.r, avg.g, avg.b);
+            if (idx === -1) continue;          // looked like background/junk
+            counts[idx] = (counts[idx] || 0) + 1;
+            valid++;
+        }
+        var bestIdx = -1, bestCount = 0;
+        for (var idx in counts) {
+            if (counts[idx] > bestCount) { bestCount = counts[idx]; bestIdx = parseInt(idx); }
+        }
+        // Need a clear majority of the valid samples to trust the zone.
+        return (bestIdx !== -1 && bestCount >= Math.ceil(valid * 0.6)) ? bestIdx : -1;
+    }
+
+    var sampledIndices = [];
+    var zonesFailed = 0;
+    for (var i = 0; i < 5; i++) {
+        var x = startX + (i * (earW + gap));
+        var zoneSamples = [
+            { px: x + 14, py: baseY - 8 },  // left half
+            { px: x + 36, py: baseY - 8 },  // right half
+            { px: x + 25, py: baseY - 24 }  // accent dot
+        ];
+        for (var j = 0; j < zoneSamples.length; j++) {
+            var v = votesForZone(zoneSamples[j].px, zoneSamples[j].py);
+            if (v === -1) { zonesFailed++; v = 0; } // neutral fill; checksum will reject
+            sampledIndices.push(v);
+        }
+    }
+
+    var trackId = decodeZaraCode(sampledIndices);
+    if (trackId === null) {
+        if (isUpload) {
+            mostrarResultadoLeitura({
+                title: "Não consegui ler esse código 😿",
+                artist: zonesFailed > 4
+                    ? "Partes do código ficaram apagadas ou cortadas — tente uma foto mais de frente e bem iluminada"
+                    : "Tente uma foto mais nítida e bem iluminada",
+                cover: defaultCover
+            });
+        }
+        return;
+    }
+    closeScanner();
+    lookupTrackAndShow(trackId);
+}
 
                 samplePoints.forEach(pt => {
                     var avg = sampleAverageColor(ctx, pt.px, pt.py, 7);
@@ -1027,34 +1079,33 @@
         // more resistant to JPEG re-compression noise and anti-aliasing at
         // shape edges, which is what used to cause misreads.
         function sampleAverageColor(ctx, px, py, size) {
-            var half = Math.floor(size / 2);
-            var imgData = ctx.getImageData(px - half, py - half, size, size).data;
-            var r = 0, g = 0, b = 0, count = 0;
-            for (var k = 0; k < imgData.length; k += 4) {
-                r += imgData[k]; g += imgData[k + 1]; b += imgData[k + 2]; count++;
-            }
-            return { r: r / count, g: g / count, b: b / count };
-        }
+    var half = size / 2;
+    var imgData = ctx.getImageData(px - half, py - half, size, size).data;
+    var r = 0, g = 0, b = 0, count = 0;
+    for (var k = 0; k < imgData.length; k += 4) {
+        r += imgData[k]; g += imgData[k + 1]; b += imgData[k + 2]; count++;
+    }
+    return { r: r / count, g: g / count, b: b / count };
+}
+
 
         function getClosestColorIndex(r, g, b) {
-            // "redmean" weighted distance — closer to how the eye (and a
-            // photo's color shifts) actually perceive differences than
-            // plain Euclidean RGB distance.
-            var minDist = Infinity;
-            var bestIdx = 0;
-            for (var i = 0; i < earPalette.length; i++) {
-                var hex = earPalette[i];
-                var pr = parseInt(hex.slice(1,3), 16);
-                var pg = parseInt(hex.slice(3,5), 16);
-                var pb = parseInt(hex.slice(5,7), 16);
-                var rmean = (r + pr) / 2;
-                var dr = r - pr, dg = g - pg, db = b - pb;
-                var dist = ((2 + rmean / 256) * dr * dr) + (4 * dg * dg) + ((2 + (255 - rmean) / 256) * db * db);
-                if (dist < minDist) { minDist = dist; bestIdx = i; }
-            }
-            return bestIdx;
-        }
-
+    var minDist = Infinity, bestIdx = -1;
+    for (var i = 0; i < earPalette.length; i++) {
+        var hex = earPalette[i];
+        var pr = parseInt(hex.slice(1,3), 16);
+        var pg = parseInt(hex.slice(3,5), 16);
+        var pb = parseInt(hex.slice(5,7), 16);
+        var rmean = (r + pr) / 2;
+        var dr = r - pr, dg = g - pg, db = b - pb;
+        var dist = ((2 + rmean / 256) * dr * dr) + (4 * dg * dg) + ((2 + (255 - rmean) / 256) * db * db);
+        if (dist < minDist) { minDist = dist; bestIdx = i; }
+    }
+    // Reject anything too far from every palette color (background pink,
+    // white glare, shadows) instead of forcing it onto a wrong color.
+    if (minDist > 9000) return -1;
+    return bestIdx;
+            
         function mostrarResultadoLeitura(data) {
             document.getElementById('readCoverContainer').innerHTML = `<img src="${data.cover}" style="width: 140px; border-radius: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">`;
             document.getElementById('readText').innerHTML = `<strong>${data.title}</strong><br><span style="font-size:0.85rem; opacity:0.8">${data.artist}</span>`;
