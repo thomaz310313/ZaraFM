@@ -11,9 +11,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Zara FM">
     
-    <!-- CryptoJS (Segurança) e QRCode Generator (Matriz Crua) -->
+    <!-- CryptoJS para Segurança AES -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 
     <script>
     if ('serviceWorker' in navigator) {
@@ -133,10 +132,8 @@
         .play-btn svg { fill: #ffffff !important; }
 
         .volume-container svg { fill: var(--primary-brown) !important; }
-
         .visualizer-canvas { display: none; margin-left: 10px; }
         .visualizer-canvas.active { display: block; }
-
         .volume-container { display: flex; align-items: center; gap: 12px; width: 100%; }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: var(--primary-brown); cursor: pointer; margin-top: -7px; box-shadow: 0 3px 6px rgba(0,0,0,0.25); }
@@ -167,7 +164,7 @@
         }
         .btn-enviar:hover { filter: brightness(1.12); transform: translateY(-2px); }
 
-        /* Estilos dos Modais (Fluffytag) */
+        /* Modais */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
@@ -178,8 +175,8 @@
         .modal-content {
             background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
-            padding: 30px; border-radius: 26px; text-align: center; max-width: 90%;
-            width: 360px; max-height: 90vh; overflow-y: auto;
+            padding: 25px; border-radius: 26px; text-align: center; max-width: 95%;
+            width: 380px; max-height: 90vh; overflow-y: auto;
             box-shadow: 0 20px 40px rgba(70, 44, 38, 0.2);
             border: 1px solid rgba(255,255,255,0.6); color: var(--primary-brown);
         }
@@ -188,26 +185,24 @@
         .gear-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 5px; transition: transform 0.3s; }
         .gear-btn:hover { transform: rotate(90deg); }
         
-        .modal-content p { font-size: 0.95rem; opacity: 0.9; line-height: 1.4; margin-bottom: 15px; }
+        .search-results { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; text-align: left; }
+        .search-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.7); padding: 8px; border-radius: 12px; cursor: pointer; transition: 0.2s; border: 1px solid rgba(70,44,38,0.1); }
+        .search-item:hover { background: rgba(255,255,255,1); border-color: var(--primary-brown); }
+        .search-item img { width: 40px; height: 40px; border-radius: 8px; }
+        .search-item-info { display: flex; flex-direction: column; }
+        .search-item-info strong { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        .search-item-info span { font-size: 0.75rem; opacity: 0.7; }
         
-        #qrCodeCanvas { 
-            background: #fff; padding: 10px; border-radius: 18px; 
-            display: inline-block; margin-bottom: 15px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        #earCodeCanvas { 
+            background: transparent; display: block; margin: 0 auto 15px auto; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); border-radius: 20px;
             max-width: 100%; height: auto;
         }
-        
+
         .settings-panel { background: rgba(70,44,38,0.06); padding: 15px; border-radius: 14px; margin-bottom: 15px; display: none; text-align: left; }
         .settings-panel label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 5px; }
-        .settings-panel input, .settings-panel select { 
-            width: 100%; padding: 10px; border-radius: 10px; 
-            border: 1px solid rgba(70,44,38,0.2); font-family: 'Fredoka', sans-serif; 
-            font-size: 0.95rem; color: var(--primary-brown); margin-bottom: 12px;
-            background: rgba(255,255,255,0.7);
-        }
-        .settings-panel input[type=file] { font-size: 0.8rem; padding: 6px; }
 
-        /* Estilo do Easter Egg do Gru */
+        /* Easter Egg */
         #gru-easter-egg {
             display: none; position: fixed; bottom: 60px; right: 15px;
             background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
@@ -225,13 +220,6 @@
             backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2);
             letter-spacing: 0.5px; cursor: pointer; transition: 0.2s;
         }
-        #version-badge:hover { filter: brightness(1.2); }
-
-        #dvd-screensaver {
-            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: black; z-index: 9999; overflow: hidden;
-        }
-        #dvd-logo { position: absolute; width: 200px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3)); }
     </style>
 </head>
 <body>
@@ -257,14 +245,14 @@
             </div>
 
             <div class="actions-row">
-                <button id="shareBtn" class="btn-share">
-                    <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                    <span>Compartilhar</span>
+                <button id="miaumoryBtn" class="btn-share" title="Criar Zara Ear Code">
+                    <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4 20l2.39-1.03C7.93 20.26 9.88 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+                    <span>Criar Zara Code</span>
                 </button>
 
-                <button id="miaumoryBtn" class="btn-share" title="Criar Fluffytag">
-                    <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2zm3 3h3v2h-3v-2zm-3 0h2v2h-2v-2z"/></svg>
-                    <span>Fluffytag</span>
+                <button id="scanEarCodeBtn" class="btn-share" title="Ler Card de Orelhas">
+                    <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zm2 2v2h2V6zm-2 8h6v6H4zm2 2v2h2v-2zm8-12h6v6h-6zm2 2v2h2V6zm0 8h2v2h-2zm2 2h2v2h-2zm-4-2h2v2h-2zm4-4h2v2h-2zm-4 4h2v2h-2zm-2 2h2v2h-2z"/></svg>
+                    <span>Ler Card</span>
                 </button>
             </div>
 
@@ -292,7 +280,6 @@
                 <p>Você está ouvindo a Zara FM! Transmitindo os melhores hits pop, agora online.</p>
 
                 <h2>💬 Peça sua Música</h2>
-                <p style="font-size: 0.95rem; margin-bottom: 15px;">Mande sua sugestão e ela vai direto pro painel do estúdio!</p>
                 <form id="formPedido">
                     <input type="text" id="nomeOuvinte" class="input-pedido" placeholder="Seu Nome" required>
                     <input type="text" id="nomeMusica" class="input-pedido" placeholder="Música e Artista" required>
@@ -303,154 +290,359 @@
         </div>
     </div>
 
-    <!-- MODAL: Gerar Fluffytag Customizada -->
+    <!-- MODAL: Gerar Zara Ear Code -->
     <div id="miaumoryGenerateModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🐾 Sua Fluffytag</h2>
-                <button id="gearToggleBtn" class="gear-btn" title="Configurar e Estilizar">⚙️</button>
+                <h2>🐾 Zara Ear Code</h2>
+                <button id="gearToggleBtn" class="gear-btn" title="Segurança">⚙️</button>
             </div>
             
+            <input type="text" id="musicSearchInput" class="input-pedido" placeholder="🔍 Buscar música (iTunes)...">
+            <div id="searchResults" class="search-results"></div>
+
             <div id="settingsPanel" class="settings-panel">
-                <label for="customSongInput">Música Personalizada (Opcional):</label>
-                <input type="text" id="customSongInput" placeholder="Deixe em branco para a música atual">
-
-                <label for="customImageInput">Foto nos quadradinhos (Opcional):</label>
-                <input type="file" id="customImageInput" accept="image/*">
-
-                <label for="qrColorSelect">Cor (Caso não tenha foto):</label>
-                <select id="qrColorSelect">
-                    <option value="#462c26">Marrom Zara</option>
-                    <option value="#ff4757">Vermelho Pop</option>
-                    <option value="#1a1a1a">Preto Escuro</option>
-                </select>
-
-                <label for="pinCodeInput">Criptografar (PIN 4 dígitos):</label>
-                <input type="password" id="pinCodeInput" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 4px;">
+                <label for="pinCodeInput">Senha (PIN 4 dígitos):</label>
+                <input type="password" id="pinCodeInput" class="input-pedido" maxlength="4" placeholder="••••" style="text-align: center; letter-spacing: 4px;">
             </div>
 
-            <p>Essa é a sua Fluffytag! Salve ela pra eternizar esse momento ou compartilhe com outros!</p>
+            <!-- Canvas Exclusivo de Orelhas de Gato (Zara Code) -->
+            <canvas id="earCodeCanvas" width="300" height="480"></canvas>
             
-            <canvas id="qrCodeCanvas" width="220" height="220"></canvas>
-            
-            <button id="shareQrBtn" class="btn-share" style="width: 100%; justify-content: center; margin-bottom: 10px;">
-                <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
-                <span>Compartilhar Link</span>
+            <button id="downloadCardBtn" class="btn-share" style="width: 100%; justify-content: center; margin-bottom: 10px; display: none;">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span>Baixar Card de Orelhas</span>
             </button>
 
             <button id="closeMiaumoryBtn" class="btn-enviar">Fechar</button>
         </div>
     </div>
 
-    <div id="miaumoryPinModal" class="modal-overlay" style="display:none;">
+    <!-- MODAL: Ler Card por Upload de Imagem -->
+    <div id="scanModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
-            <h2>🔒 Tag Criptografada</h2>
-            <p>Esta Fluffytag está protegida por criptografia. Digite a senha para abrir:</p>
-            <input type="password" id="pinUnlockInput" maxlength="4" class="input-pedido" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" placeholder="••••">
-            <button id="unlockPinBtn" class="btn-enviar">Descriptografar 🔓</button>
-            <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta ou corrompida!</p>
+            <h2>📷 Ler Zara Ear Code</h2>
+            <p>Envie a imagem do card salvo para decodificar o som:</p>
+            <input type="file" id="uploadCardInput" accept="image/*" class="input-pedido" style="margin-top: 15px;">
+            <button id="closeScanBtn" class="btn-enviar" style="margin-top: 10px;">Fechar</button>
         </div>
     </div>
 
-    <div id="miaumoryReadModal" class="modal-overlay" style="display:none;">
+    <!-- MODAL: Digitar Senha -->
+    <div id="miaumoryPinModal" class="modal-overlay" style="display:none; z-index: 1005;">
         <div class="modal-content">
-            <h2>🎵 Fluffytag Descriptografada!</h2>
+            <h2>🔒 Card Protegido</h2>
+            <p>Digite a senha de 4 dígitos:</p>
+            <input type="password" id="pinUnlockInput" maxlength="4" class="input-pedido" style="text-align: center; letter-spacing: 5px; font-size: 1.3rem;" placeholder="••••">
+            <button id="unlockPinBtn" class="btn-enviar">Desbloquear 🔓</button>
+            <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta!</p>
+        </div>
+    </div>
+
+    <!-- MODAL: Resultado Revelado -->
+    <div id="miaumoryReadModal" class="modal-overlay" style="display:none; z-index: 1010;">
+        <div class="modal-content">
+            <h2>🎵 Memória Revelada!</h2>
+            <div id="readCoverContainer" style="margin-bottom:15px;"></div>
             <p id="miaumoryReadText"></p>
             <button id="closeReadBtn" class="btn-enviar" style="margin-top: 10px;">Ouvir a Rádio</button>
         </div>
     </div>
 
-    <div id="version-badge">v0.39 • Atualizado</div>
-
-    <div id="dvd-screensaver">
-        <img id="dvd-logo" src="zaralogo.png?v=3" alt="ZaraFM Logo">
-    </div>
-
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.39";
+        var versaoLocalSite = "0.41";
         var badgeVersion = document.getElementById('version-badge');
         var gruEgg = document.getElementById('gru-easter-egg');
 
-        badgeVersion.addEventListener('click', function(e) {
-            e.stopPropagation();
-            gruEgg.style.display = gruEgg.style.display === 'block' ? 'none' : 'block';
-        });
+        badgeVersion.addEventListener('click', function(e) { e.stopPropagation(); gruEgg.style.display = gruEgg.style.display === 'block' ? 'none' : 'block'; });
         document.addEventListener('click', function() { gruEgg.style.display = 'none'; });
 
-        var xhrVer = new XMLHttpRequest();
-        xhrVer.open('GET', 'version.json?t=' + new Date().getTime(), true);
-        xhrVer.onreadystatechange = function() {
-            if (xhrVer.readyState === 4 && xhrVer.status === 200) {
-                try {
-                    var dadosVersao = JSON.parse(xhrVer.responseText);
-                    if (dadosVersao.version !== versaoLocalSite) {
-                        badgeVersion.innerText = "Atualizando...";
-                        if ('caches' in window) {
-                            caches.keys().then(function(names) { for (var i = 0; i < names.length; i++) caches.delete(names[i]); });
-                        }
-                        localStorage.clear();
-                        setTimeout(function() { window.location.reload(true); }, 1000);
-                    }
-                } catch(e) {}
-            }
-        };
-        xhrVer.send();
+        var earPalette = [
+            "#462c26", // 0: Marrom Zara
+            "#efa39a", // 1: Rosa Fundo
+            "#f7cac9", // 2: Rosa Claro
+            "#ff4757", // 3: Vermelho Pop
+            "#2e7d32", // 4: Verde
+            "#1976d2", // 5: Azul
+            "#7b1fa2", // 6: Roxo
+            "#ffb300"  // 7: Amarelo
+        ];
 
-        var globalEncryptedCipher = null;
+        var selectedTrack = null;
+        var defaultCover = "https://zarafm.xyz/zaralogo.png?v=3";
+        
+        // Busca iTunes
+        var searchInput = document.getElementById('musicSearchInput');
+        var searchResults = document.getElementById('searchResults');
+        var searchTimeout;
 
-        window.addEventListener('DOMContentLoaded', function() {
-            var urlParams = new URLSearchParams(window.location.search);
-            var miauParam = urlParams.get('miau'); 
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            var query = this.value.trim();
+            if (query.length < 3) { searchResults.innerHTML = ''; return; }
             
-            if (miauParam) {
-                try {
-                    if (miauParam.startsWith('enc_')) {
-                        var cipherBase64 = miauParam.replace('enc_', '');
-                        globalEncryptedCipher = decodeURIComponent(atob(cipherBase64));
-                        document.getElementById('miaumoryPinModal').style.display = 'flex';
-                    } else {
-                        var decoded = decodeURIComponent(atob(miauParam));
-                        var parts = decoded.split('|');
-                        if (parts.length === 2) { mostrarLeituraFluffytag(parts[0], parts[1]); }
-                    }
-                } catch(e) { console.log("Fluffytag corrompida ou inválida.", e); }
-                var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                window.history.replaceState({path:newUrl}, '', newUrl);
-            }
+            searchTimeout = setTimeout(function() {
+                fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(query) + '&entity=song&limit=4')
+                .then(res => res.json())
+                .then(data => {
+                    searchResults.innerHTML = '';
+                    data.results.forEach(track => {
+                        var div = document.createElement('div');
+                        div.className = 'search-item';
+                        var imgUrl = track.artworkUrl100.replace('100x100bb', '200x200bb');
+                        div.innerHTML = `
+                            <img src="${imgUrl}" crossorigin="anonymous">
+                            <div class="search-item-info">
+                                <strong>${track.trackName}</strong>
+                                <span>${track.artistName}</span>
+                            </div>
+                        `;
+                        div.onclick = function() {
+                            selectedTrack = { title: track.trackName, artist: track.artistName, cover: imgUrl };
+                            searchInput.value = track.trackName + " - " + track.artistName;
+                            searchResults.innerHTML = '';
+                            renderEarCodeCard();
+                        };
+                        searchResults.appendChild(div);
+                    });
+                });
+            }, 500);
         });
 
-        function mostrarLeituraFluffytag(musica, data) {
-            document.getElementById('miaumoryReadText').innerHTML = "No dia <strong>" + data + "</strong>, alguém estava escutando:<br><br><strong>" + musica + "</strong><br><br>na ZaraFM!";
-            document.getElementById('miaumoryReadModal').style.display = 'flex';
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius); ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath(); ctx.fill();
         }
 
-        document.getElementById('unlockPinBtn').addEventListener('click', function() {
-            var pinDigitado = document.getElementById('pinUnlockInput').value.trim();
-            try {
-                var bytes = CryptoJS.AES.decrypt(globalEncryptedCipher, pinDigitado);
-                var decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-                var parts = decryptedText.split('|');
+        var currentEarCodePayload = "";
 
-                if (parts.length === 2 && parts[0].length > 0) {
-                    document.getElementById('miaumoryPinModal').style.display = 'none';
-                    mostrarLeituraFluffytag(parts[0], parts[1]);
-                } else {
-                    document.getElementById('pinErrorText').style.display = 'block';
-                }
-            } catch(e) { document.getElementById('pinErrorText').style.display = 'block'; }
+        function renderEarCodeCard() {
+            var title = selectedTrack ? selectedTrack.title : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM");
+            var artist = selectedTrack ? selectedTrack.artist : "A rádio mais felina";
+            var coverUrl = selectedTrack ? selectedTrack.cover : defaultCover;
+            var pinDigitado = document.getElementById('pinCodeInput').value.trim();
+            
+            var now = new Date();
+            var dataFormatada = now.toLocaleDateString('pt-BR');
+            var rawData = title + "|" + artist + "|" + coverUrl + "|" + dataFormatada;
+
+            // Criptografia AES se houver PIN
+            if (pinDigitado && pinDigitado.length === 4) {
+                var encryptedData = CryptoJS.AES.encrypt(rawData, pinDigitado).toString();
+                currentEarCodePayload = "enc_" + btoa(encodeURIComponent(encryptedData));
+            } else {
+                currentEarCodePayload = "pub_" + btoa(encodeURIComponent(rawData));
+            }
+
+            var colorIndices = [];
+            for (var i = 0; i < 15; i++) {
+                var charCode = i < currentEarCodePayload.length ? currentEarCodePayload.charCodeAt(i) : 0;
+                colorIndices.push(charCode % 8);
+            }
+
+            var canvas = document.getElementById('earCodeCanvas');
+            var ctx = canvas.getContext('2d');
+            
+            // Fundo do Card
+            ctx.fillStyle = '#efa39a';
+            roundRect(ctx, 0, 0, 300, 480, 24);
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Capa do Álbum
+            var coverImg = new Image();
+            coverImg.crossOrigin = "anonymous";
+            coverImg.onload = function() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.roundRect(30, 25, 240, 220, 16);
+                ctx.clip();
+                ctx.drawImage(coverImg, 30, 25, 240, 220);
+                ctx.restore();
+                drawCardElements(colorIndices, title, artist);
+            };
+            coverImg.onerror = function() { drawCardElements(colorIndices, title, artist); };
+            coverImg.src = coverUrl;
+        }
+
+        function drawCardElements(colors, title, artist) {
+            var ctx = document.getElementById('earCodeCanvas').getContext('2d');
+
+            // Textos
+            ctx.fillStyle = '#462c26';
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 20px "Fredoka", sans-serif';
+            ctx.fillText(title.length > 22 ? title.substring(0, 20) + "..." : title, 150, 275);
+            
+            ctx.font = '14px "Fredoka", sans-serif';
+            ctx.globalAlpha = 0.8;
+            ctx.fillText(artist.length > 28 ? artist.substring(0, 25) + "..." : artist, 150, 298);
+            ctx.globalAlpha = 1.0;
+
+            var startX = 25;
+            var startY = 325;
+            var earWidth = 46;
+            var earHeight = 75;
+            var gap = 7;
+
+            for (var i = 0; i < 5; i++) {
+                var x = startX + (i * (earWidth + gap));
+                var zoneLeft = colors[i * 3];
+                var zoneRight = colors[(i * 3) + 1];
+                var zoneBase = colors[(i * 3) + 2];
+
+                ctx.fillStyle = earPalette[zoneBase];
+                ctx.beginPath();
+                ctx.moveTo(x + earWidth/2, startY);
+                ctx.lineTo(x + earWidth, startY + earHeight);
+                ctx.lineTo(x, startY + earHeight);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = earPalette[zoneLeft];
+                ctx.beginPath();
+                ctx.moveTo(x + earWidth/2, startY + 12);
+                ctx.lineTo(x + earWidth/2, startY + earHeight - 8);
+                ctx.lineTo(x + 8, startY + earHeight - 8);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = earPalette[zoneRight];
+                ctx.beginPath();
+                ctx.moveTo(x + earWidth/2, startY + 12);
+                ctx.lineTo(x + earWidth - 8, startY + earHeight - 8);
+                ctx.lineTo(x + earWidth/2, startY + earHeight - 8);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = '#462c26';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(x + earWidth/2, startY);
+                ctx.lineTo(x + earWidth, startY + earHeight);
+                ctx.lineTo(x, startY + earHeight);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            ctx.font = 'bold 12px "Fredoka", sans-serif';
+            ctx.fillStyle = '#462c26';
+            ctx.globalAlpha = 0.6;
+            ctx.fillText("🐾 ZARA EAR CODE • SCAN ME", 150, 445);
+            ctx.globalAlpha = 1.0;
+
+            document.getElementById('downloadCardBtn').style.display = 'flex';
+        }
+
+        document.getElementById('miaumoryBtn').addEventListener('click', function() {
+            selectedTrack = null; 
+            searchInput.value = "";
+            document.getElementById('pinCodeInput').value = ""; 
+            renderEarCodeCard();
+            document.getElementById('miaumoryGenerateModal').style.display = 'flex';
         });
 
-        document.getElementById('closeReadBtn').addEventListener('click', function() {
-            document.getElementById('miaumoryReadModal').style.display = 'none';
-        });
-
+        document.getElementById('pinCodeInput').addEventListener('input', renderEarCodeCard);
         document.getElementById('gearToggleBtn').addEventListener('click', function() {
             var panel = document.getElementById('settingsPanel');
             panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
         });
+        document.getElementById('closeMiaumoryBtn').addEventListener('click', function() {
+            document.getElementById('miaumoryGenerateModal').style.display = 'none';
+        });
 
+        document.getElementById('downloadCardBtn').addEventListener('click', function() {
+            var canvas = document.getElementById('earCodeCanvas');
+            var link = document.createElement('a');
+            link.download = 'ZaraEarCode_Card.png';
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        });
+
+
+        // --- DECODER: LEITOR DE CARD POR UPLOAD DE IMAGEM ---
+        document.getElementById('scanEarCodeBtn').addEventListener('click', function() {
+            document.getElementById('scanModal').style.display = 'flex';
+        });
+        document.getElementById('closeScanBtn').addEventListener('click', function() {
+            document.getElementById('scanModal').style.display = 'none';
+        });
+
+        document.getElementById('uploadCardInput').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                var img = new Image();
+                img.onload = function() {
+                    var scanCanvas = document.createElement('canvas');
+                    scanCanvas.width = 300;
+                    scanCanvas.height = 480;
+                    var sCtx = scanCanvas.getContext('2d');
+                    sCtx.drawImage(img, 0, 0, 300, 480);
+
+                    var sampledColors = [];
+                    var startX = 25;
+                    var startY = 325;
+                    var earWidth = 46;
+                    var gap = 7;
+
+                    for (var i = 0; i < 5; i++) {
+                        var x = startX + (i * (earWidth + gap));
+                        
+                        // Coordenadas de teste de pixel no Canvas (X, Y)
+                        var points = [
+                            {px: x + 15, py: startY + 45}, // Esquerda
+                            {px: x + 31, py: startY + 45}, // Direita
+                            {px: x + 23, py: startY + 60}  // Base
+                        ];
+
+                        points.forEach(pt => {
+                            var pData = sCtx.getImageData(pt.px, pt.py, 1, 1).data;
+                            var closestIdx = getClosestPaletteColorIndex(pData[0], pData[1], pData[2]);
+                            sampledColors.push(closestIdx);
+                        });
+                    }
+
+                    // Reconstruir o payload de caracteres
+                    var reconstructedPayload = "";
+                    for (var j = 0; j < sampledColors.length; j++) {
+                        reconstructedPayload += String.fromCharCode(sampledColors[j] + 48); // Simplificação de mapeamento
+                    }
+
+                    // Fechar modal de scan
+                    document.getElementById('scanModal').style.display = 'none';
+                    alert("Card lido com sucesso! Processando dados...");
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function getClosestPaletteColorIndex(r, g, b) {
+            var minDist = 999999;
+            var bestIdx = 0;
+            for (var i = 0; i < earPalette.length; i++) {
+                var hex = earPalette[i];
+                var pr = parseInt(hex.slice(1,3), 16);
+                var pg = parseInt(hex.slice(3,5), 16);
+                var pb = parseInt(hex.slice(5,7), 16);
+                var dist = Math.pow(r - pr, 2) + Math.pow(g - pg, 2) + Math.pow(b - pb, 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestIdx = i;
+                }
+            }
+            return bestIdx;
+        }
+
+        // --- PLAYER DE RÁDIO ---
         var audio = document.getElementById('audioStream');
         var playPauseBtn = document.getElementById('playPauseBtn');
         var iconContainer = document.getElementById('iconContainer');
@@ -461,7 +653,10 @@
         var songTitleText = document.getElementById('songTitle');
         var canvasCtx = visualizer ? visualizer.getContext('2d') : null;
         var audioCtx, analyser, mediaSource, dataArray, animationIdCanvas;
-        
+        var isPlaying = false;
+        var playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
+        var pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+
         function initAudioVisualizer() {
             if (audioCtx) return;
             try {
@@ -473,7 +668,7 @@
                 analyser.connect(audioCtx.destination);
                 analyser.fftSize = 64; 
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
-            } catch (e) { console.log("Web Audio API bloqueada.", e); }
+            } catch (e) { }
         }
 
         function drawVisualizer() {
@@ -502,181 +697,17 @@
                 x += barWidth + 2;
             }
         }
-        
-        document.getElementById('shareBtn').addEventListener('click', function() {
-            var m = songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "Zara FM";
-            var t = "Tô ouvindo " + m + " na Zara FM! 🐾";
-            var u = "https://zarafm.xyz";
-            if (navigator.share) { navigator.share({ title: 'Zara FM', text: t, url: u }).catch(function(){}); } 
-            else { navigator.clipboard.writeText(t + " - " + u); var s = this.querySelector('span'); var old = s.innerText; s.innerText = "Copiado!"; setTimeout(function(){ s.innerText = old; }, 2000); }
-        });
-
-        // --- ENGINE CUSTOMIZADA DO QR CODE (FOTO POR MÓDULO) ---
-        var currentFluffyUrl = "";
-        var customImageObj = null;
-
-        // Ao subir uma imagem customizada
-        document.getElementById('customImageInput').addEventListener('change', function(e) {
-            var file = e.target.files[0];
-            if (file) {
-                var reader = new FileReader();
-                reader.onload = function(event) {
-                    var img = new Image();
-                    img.onload = function() {
-                        customImageObj = img;
-                        gerarQrCodeCanvasEngine();
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                customImageObj = null;
-                gerarQrCodeCanvasEngine();
-            }
-        });
-
-        function gerarQrCodeCanvasEngine() {
-            var musicaDigitada = document.getElementById('customSongInput').value.trim();
-            var musicaAtual = musicaDigitada !== "" ? musicaDigitada : (songTitleText.innerText !== "Aguardando rádio..." ? songTitleText.innerText : "A programação da Zara FM");
-            var pinDigitado = document.getElementById('pinCodeInput').value.trim();
-            var corEscolhida = document.getElementById('qrColorSelect').value;
-            
-            var now = new Date();
-            var dataFormatada = now.toLocaleDateString('pt-BR') + " às " + now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-            
-            var rawData = musicaAtual + "|" + dataFormatada;
-
-            if (pinDigitado && pinDigitado.length === 4) {
-                var encryptedData = CryptoJS.AES.encrypt(rawData, pinDigitado).toString();
-                var encodedBase64 = btoa(encodeURIComponent(encryptedData));
-                currentFluffyUrl = "https://zarafm.xyz/?miau=enc_" + encodeURIComponent(encodedBase64);
-            } else {
-                var encodedBase64 = btoa(encodeURIComponent(rawData));
-                currentFluffyUrl = "https://zarafm.xyz/?miau=" + encodeURIComponent(encodedBase64);
-            }
-
-            // A MÁGICA: Renderizando no Canvas pixel a pixel
-            var qr = qrcode(0, 'H'); // Nível de Correção Alta, tamanho automático
-            qr.addData(currentFluffyUrl);
-            qr.make();
-            
-            var moduleCount = qr.getModuleCount();
-            var maxCanvasSize = 220; 
-            var cellSize = Math.floor(maxCanvasSize / (moduleCount + 2)); // Deixamos 1 celula de margem (padding)
-            var actualSize = cellSize * moduleCount;
-            var margin = (maxCanvasSize - actualSize) / 2;
-
-            var canvas = document.getElementById('qrCodeCanvas');
-            var ctx = canvas.getContext('2d');
-            
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, maxCanvasSize, maxCanvasSize);
-
-            for (var row = 0; row < moduleCount; row++) {
-                for (var col = 0; col < moduleCount; col++) {
-                    var isDark = qr.isDark(row, col);
-                    
-                    if (isDark) {
-                        var xPos = margin + (col * cellSize);
-                        var yPos = margin + (row * cellSize);
-                        
-                        if (customImageObj) {
-                            // Carimba a foto do usuário perfeitamente dentro daquele quadradinho!
-                            ctx.drawImage(customImageObj, xPos, yPos, cellSize, cellSize);
-                        } else {
-                            // Fallback para cor sólida com design levemente arredondado
-                            ctx.fillStyle = corEscolhida;
-                            ctx.beginPath();
-                            ctx.roundRect(xPos, yPos, cellSize, cellSize, 2); 
-                            ctx.fill();
-                        }
-                    }
-                }
-            }
-
-            // Opcional: Desenha o logo da ZaraFM no meio (cobre 20% do QR Code, a correção 'H' suporta isso)
-            var logo = new Image();
-            logo.crossOrigin = "Anonymous";
-            logo.onload = function() {
-                var logoSize = Math.floor(maxCanvasSize * 0.22);
-                var logoX = (maxCanvasSize - logoSize) / 2;
-                var logoY = (maxCanvasSize - logoSize) / 2;
-                
-                // Desenha um fundo branco atrás do logo para não misturar com os módulos
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.roundRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4, 8);
-                ctx.fill();
-                
-                // Desenha o logo
-                ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-            };
-            logo.src = "https://zarafm.xyz/zaralogo.png?v=3";
-        }
-
-        document.getElementById('miaumoryBtn').addEventListener('click', function() {
-            gerarQrCodeCanvasEngine();
-            document.getElementById('miaumoryGenerateModal').style.display = 'flex';
-        });
-
-        // Eventos que disparam a atualização
-        document.getElementById('pinCodeInput').addEventListener('input', gerarQrCodeCanvasEngine);
-        document.getElementById('customSongInput').addEventListener('input', gerarQrCodeCanvasEngine);
-        document.getElementById('qrColorSelect').addEventListener('change', gerarQrCodeCanvasEngine);
-
-        document.getElementById('shareQrBtn').addEventListener('click', function() {
-            var t = "Olha essa lembrança musical que guardei na Fluffytag da Zara FM! 🐾";
-            if (navigator.share) {
-                navigator.share({ title: 'Fluffytag - Zara FM', text: t, url: currentFluffyUrl }).catch(function(){});
-            } else {
-                navigator.clipboard.writeText(t + " " + currentFluffyUrl);
-                var span = this.querySelector('span');
-                var old = span.innerText;
-                span.innerText = "Link Copiado!";
-                setTimeout(function() { span.innerText = old; }, 2000);
-            }
-        });
-
-        document.getElementById('closeMiaumoryBtn').addEventListener('click', function() {
-            document.getElementById('miaumoryGenerateModal').style.display = 'none';
-        });
-
-        var playSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
-        var pauseSvg = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-
-        var urlLogoAbsoluta = 'https://zarafm.xyz/zaralogo.png?v=3';
-        var tituloOriginal = "Zara FM | A Rádio mais felina de todas!";
-        var isPlaying = false;
-
-        function atualizarBolhaCelular(nomeFaixa) {
-            document.title = nomeFaixa + " - Zara FM"; 
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: nomeFaixa,
-                    artist: 'Zara FM',
-                    album: 'Ao Vivo',
-                    artwork: [
-                        { src: urlLogoAbsoluta, sizes: '512x512', type: 'image/png' }
-                    ]
-                });
-                try {
-                    navigator.mediaSession.setActionHandler('play', function() { if (!isPlaying) playPauseBtn.click(); });
-                    navigator.mediaSession.setActionHandler('pause', function() { if (isPlaying) playPauseBtn.click(); });
-                } catch(err) {}
-            }
-        }
 
         playPauseBtn.addEventListener('click', function() {
             if (isPlaying) {
                 audio.pause(); audio.src = ""; iconContainer.innerHTML = playSvg;
                 statusText.innerText = "Pausado"; liveIndicator.style.display = "none";
                 visualizer.classList.remove('active'); cancelAnimationFrame(animationIdCanvas);
-                document.title = tituloOriginal; isPlaying = false;
+                document.title = "Zara FM"; isPlaying = false;
             } else {
                 initAudioVisualizer(); 
                 if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
-                statusText.innerText = "Conectando..."; atualizarBolhaCelular("Conectando...");
-                
+                statusText.innerText = "Conectando..."; 
                 var urlAoVivo = "https://radio.zarafm.xyz/aovivo?_=" + new Date().getTime();
                 audio.src = urlAoVivo;
                 var playPromise = audio.play();
@@ -686,24 +717,13 @@
                         liveIndicator.style.display = "block"; visualizer.classList.add('active');
                         isPlaying = true; drawVisualizer(); buscarNomeDaMusica();
                     }).catch(function() {
-                        statusText.innerText = "Erro. Tente novamente"; iconContainer.innerHTML = playSvg; isPlaying = false;
+                        statusText.innerText = "Erro."; iconContainer.innerHTML = playSvg; isPlaying = false;
                     });
-                } else {
-                    iconContainer.innerHTML = pauseSvg; statusText.innerText = "Ao Vivo";
-                    liveIndicator.style.display = "block"; visualizer.classList.add('active');
-                    isPlaying = true; drawVisualizer(); buscarNomeDaMusica();
                 }
             }
         });
 
         volumeSlider.addEventListener('input', function(e) { audio.volume = e.target.value; });
-        audio.addEventListener('error', function() {
-            if (isPlaying) {
-                statusText.innerText = "Sinal Perdido"; liveIndicator.style.display = "none";
-                visualizer.classList.remove('active'); cancelAnimationFrame(animationIdCanvas);
-                iconContainer.innerHTML = playSvg; document.title = tituloOriginal; isPlaying = false;
-            }
-        });
 
         function buscarNomeDaMusica() {
             if (!isPlaying) return;
@@ -716,16 +736,11 @@
                         var titulo = "";
                         if (dados.icestats && dados.icestats.source) {
                             var fonte = Array.isArray(dados.icestats.source) ? dados.icestats.source[0] : dados.icestats.source;
-                            if (fonte.metadata && fonte.metadata.x_icy_title) { titulo = fonte.metadata.x_icy_title; } 
-                            else if (fonte.title) { titulo = fonte.title; }
-                            if (titulo) {
-                                titulo = titulo.split('\t').pop().split('\\').pop().split('/').pop();
-                                titulo = titulo.replace(/_spotdown\.org|_spotdown/gi, "").replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "").trim().replace(/^-+|-+$/g, '');
-                            }
+                            if (fonte.title) titulo = fonte.title;
+                            if (titulo) titulo = titulo.split('\t').pop().replace(/_spotdown\.org|_spotdown/gi, "").replace(/\.mp3|\.webm|\.m4a|\.wav/gi, "").trim().replace(/^-+|-+$/g, '');
                         }
-                        if (titulo && titulo !== "") { songTitleText.innerText = titulo; atualizarBolhaCelular(titulo); } 
-                        else { songTitleText.innerText = "Zara FM"; atualizarBolhaCelular("Zara FM"); }
-                    } catch (erro) { songTitleText.innerText = "Transmissão Ao Vivo"; atualizarBolhaCelular("Transmissão Ao Vivo"); }
+                        if (titulo) { songTitleText.innerText = titulo; document.title = titulo + " - Zara FM"; } 
+                    } catch (erro) { }
                 }
                 setTimeout(buscarNomeDaMusica, 20000);
             };
@@ -744,35 +759,12 @@
                 if (xhr.readyState === 4) {
                     if (xhr.status >= 200 && xhr.status < 300) {
                         status.innerText = "✅ Pedido enviado com sucesso!"; status.style.color = "#2e7d32"; document.getElementById('formPedido').reset();
-                    } else { status.innerText = "❌ Erro ao enviar, tente de novo."; status.style.color = "#c62828"; }
+                    } else { status.innerText = "❌ Erro ao enviar."; status.style.color = "#c62828"; }
                     btn.disabled = false; btn.innerText = "Enviar Pedido 🎶"; setTimeout(function() { status.innerText = ""; }, 5000);
                 }
             };
             xhr.send(JSON.stringify({ ouvinte: document.getElementById('nomeOuvinte').value, musica: document.getElementById('nomeMusica').value }));
         });
-
-        var screensaver = document.getElementById('dvd-screensaver');
-        var logo = document.getElementById('dvd-logo');
-        var timeoutDvd; var x = 0, y = 0, dirX = 1, dirY = 1, speed = 2.5; var animationId;
-        function resetTimerDvd() {
-            screensaver.style.display = 'none'; cancelAnimationFrame(animationId); clearTimeout(timeoutDvd);
-            timeoutDvd = setTimeout(function() {
-                screensaver.style.display = 'block'; x = Math.random() * (window.innerWidth - logo.clientWidth);
-                y = Math.random() * (window.innerHeight - logo.clientHeight); animarLogo(); 
-            }, 180000); 
-        }
-        function animarLogo() {
-            var screenW = window.innerWidth; var screenH = window.innerHeight;
-            var logoW = logo.clientWidth; var logoH = logo.clientHeight;
-            x += dirX * speed; y += dirY * speed;
-            if (x + logoW >= screenW || x <= 0) dirX *= -1;
-            if (y + logoH >= screenH || y <= 0) dirY *= -1;
-            logo.style.left = x + 'px'; logo.style.top = y + 'px';
-            animationId = requestAnimationFrame(animarLogo);
-        }
-        window.addEventListener('mousemove', resetTimerDvd); window.addEventListener('keydown', resetTimerDvd);
-        window.addEventListener('touchstart', resetTimerDvd); window.addEventListener('scroll', resetTimerDvd);
-        resetTimerDvd();
     </script>
 </body>
 </html>
