@@ -731,6 +731,7 @@
             link.click();
         });
 
+
         // --- SCANNER UNIFICADO ---
         var currentScanMode = 'ear';
         var cameraStream = null;
@@ -855,10 +856,10 @@
             if (!video.videoWidth) return;
             var rct = guideRectForVideo(video);
             var canvas = document.getElementById('scannerCaptureCanvas');
-            canvas.width = rct.sw; 
-            canvas.height = rct.sh;
+            canvas.width = 266; 
+            canvas.height = 86;
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, 266, 86);
             runEarDecode(canvas, false);
         }
 
@@ -867,9 +868,9 @@
             if (!video.videoWidth) return;
             var rct = guideRectForVideo(video);
             var canvas = document.getElementById('scannerCaptureCanvas');
-            canvas.width = rct.sw; canvas.height = rct.sh;
+            canvas.width = 266; canvas.height = 86;
             var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, 266, 86);
             runEarDecode(canvas, false);
         });
 
@@ -961,9 +962,10 @@
                         ctx.drawImage(img, 0, 0);
                         tryDecodeFluffyFromCanvas(canvas, ctx, true);
                     } else {
-                        var s = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
-                        canvas.width = Math.round(img.naturalWidth * s);
-                        canvas.height = Math.round(img.naturalHeight * s);
+                        // Se for imagem enviada do card inteiro ou crop
+                        var isFull = (img.naturalHeight >= img.naturalWidth * 1.2);
+                        canvas.width = isFull ? 300 : 266;
+                        canvas.height = isFull ? 480 : 86;
                         ctx = canvas.getContext('2d', { willReadFrequently: true });
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         runEarDecode(canvas, true);
@@ -975,11 +977,11 @@
             reader.readAsDataURL(file);
         });
 
-        // --- LÓGICA REFORMULADA PROPORCIONAL DAS ORELHAS ---
+        // --- LÓGICA PRECISA DE LEITURA DO ZARACODE ---
         function runEarDecode(canvas, isUpload) {
             if (earDecodeBusy) return;
             earDecodeBusy = true;
-            if (!isUpload) setEarStatus('Analisando código');
+            if (!isUpload) setEarStatus('Analisando orelhinhas... 🐾');
 
             var trackId = sampleAndDecode(canvas, isUpload);
 
@@ -987,12 +989,12 @@
             if (trackId === null) {
                 if (isUpload) {
                     mostrarResultadoLeitura({
-                        title: "Não consegui ler esse código",
-                        artist: "Verifique o enquadramento da foto.",
+                        title: "Não consegui ler esse código 😿",
+                        artist: "Certifique-se de enviar a imagem nítida e completa do card ou das orelhas.",
                         cover: defaultCover
                     });
                 } else {
-                    setEarStatus('Ainda nada... alinhe o código perfeitamente dentro da guia 🐾');
+                    setEarStatus('Ainda nada... alinhe as orelhas perfeitamente dentro da guia 🐾');
                 }
                 return;
             }
@@ -1007,36 +1009,43 @@
             var imgData = ctx.getImageData(0, 0, W, H).data;
 
             var isFullCard = isUpload && (H >= W * 1.2);
-
             var indices = [];
             var failed = 0;
 
             for (var i = 0; i < 5; i++) {
-                var pctX = isFullCard ? (0.123 + i * 0.18) : (0.05 + i * 0.19);
-                var earCenterPx = pctX * W;
+                var earX, yL, yR, yB;
 
-                var pctY_Left  = isFullCard ? 0.81 : 0.82;
-                var pctY_Right = isFullCard ? 0.81 : 0.82;
-                var pctY_Dot   = isFullCard ? 0.78 : 0.68;
+                if (isFullCard) {
+                    var fx = 22 + (i * 54);
+                    earX = fx * (W / 300);
+                    yL = 388 * (H / 480);
+                    yR = 388 * (H / 480);
+                    yB = 376 * (H / 480);
+                    
+                    var idxLeft  = getSampleIndex(imgData, W, H, earX + 14 * (W/300), yL);
+                    var idxRight = getSampleIndex(imgData, W, H, earX + 36 * (W/300), yR);
+                    var idxDot   = getSampleIndex(imgData, W, H, earX + 25 * (W/300), yB);
 
-                var yL = pctY_Left * H;
-                var yR = pctY_Right * H;
-                var yB = pctY_Dot * H;
+                    if (idxLeft === -1) { failed++; idxLeft = 0; }
+                    if (idxRight === -1) { failed++; idxRight = 0; }
+                    if (idxDot === -1) { failed++; idxDot = 0; }
+                    indices.push(idxLeft, idxRight, idxDot);
+                } else {
+                    var cx = i * 54;
+                    var mx = W / 266, my = H / 86;
+                    
+                    var idxLeft  = getSampleIndex(imgData, W, H, (cx + 14) * mx, 74 * my);
+                    var idxRight = getSampleIndex(imgData, W, H, (cx + 36) * mx, 74 * my);
+                    var idxDot   = getSampleIndex(imgData, W, H, (cx + 25) * mx, 62 * my);
 
-                var offX = W * 0.035;
-
-                var idxLeft  = getSampleIndex(imgData, W, H, earCenterPx - offX, yL);
-                var idxRight = getSampleIndex(imgData, W, H, earCenterPx + offX, yR);
-                var idxDot   = getSampleIndex(imgData, W, H, earCenterPx, yB);
-
-                if (idxLeft === -1) { failed++; idxLeft = 0; }
-                if (idxRight === -1) { failed++; idxRight = 0; }
-                if (idxDot === -1) { failed++; idxDot = 0; }
-
-                indices.push(idxLeft, idxRight, idxDot);
+                    if (idxLeft === -1) { failed++; idxLeft = 0; }
+                    if (idxRight === -1) { failed++; idxRight = 0; }
+                    if (idxDot === -1) { failed++; idxDot = 0; }
+                    indices.push(idxLeft, idxRight, idxDot);
+                }
             }
 
-            if (failed > 3) return null;
+            if (failed > 2) return null;
             var allZero = true;
             for (var k = 0; k < indices.length; k++) {
                 if (indices[k] !== 0) { allZero = false; break; }
@@ -1048,7 +1057,7 @@
 
         function getSampleIndex(img, W, H, cx, cy) {
             var r = 0, g = 0, b = 0, n = 0;
-            var radius = Math.max(1, Math.floor(W * 0.012));
+            var radius = Math.max(1, Math.floor(W * 0.015));
 
             for (var dy = -radius; dy <= radius; dy++) {
                 for (var dx = -radius; dx <= radius; dx++) {
@@ -1077,7 +1086,7 @@
                 var dist = ((2 + rmean / 256) * dr * dr) + (4 * dg * dg) + ((2 + (255 - rmean) / 256) * db * db);
                 if (dist < minDist) { minDist = dist; bestIdx = i; }
             }
-            if (minDist > 8500) return -1;
+            if (minDist > 9000) return -1;
             return bestIdx;
         }
 
