@@ -207,11 +207,7 @@
 
         #scannerVideoWrap { position: relative; }
         #scannerVideo { width: 100%; border-radius: 16px; background: #000; display: block; }
-        #scannerGuide {
-            display: none; position: absolute; box-sizing: border-box;
-            border: 3px dashed rgba(255,255,255,0.9); border-radius: 12px; pointer-events: none;
-            box-shadow: 0 0 0 2000px rgba(0,0,0,0.6);
-        }
+
 
         .settings-panel { background: rgba(70,44,38,0.06); padding: 12px; border-radius: 14px; margin-bottom: 15px; display: none; text-align: left; }
         .settings-panel label { font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 5px; }
@@ -354,16 +350,13 @@
         <div class="modal-content">
             <h2 id="scannerModalTitle">📷 Ler Código</h2>
             <p id="scannerModalText" style="font-size: 0.9rem; margin-bottom: 15px;">Aponte a câmera ou envie uma foto:</p>
-            <p id="earScanStatus" style="display:none; margin: -8px 0 12px; font-size: 0.85rem; font-weight: 600; min-height: 1.2em;"></p>
 
             <div id="scannerVideoWrap" style="display:none; margin-bottom: 12px;">
                 <video id="scannerVideo" autoplay playsinline muted></video>
-                <div id="scannerGuide"></div>
             </div>
             <canvas id="scannerCaptureCanvas" style="display:none;"></canvas>
 
             <button id="toggleCameraBtn" class="btn-enviar">📷 Usar Câmera</button>
-            <button id="captureFrameBtn" class="btn-enviar" style="display:none; margin-top: 10px; background: linear-gradient(180deg, #7a9e6f 0%, #4f6e46 100%);">📸 Capturar Manual</button>
 
             <p style="margin: 16px 0 6px; font-size: 0.85rem; opacity: 0.7;">ou envie uma foto:</p>
             <input type="file" id="scannerFileInput" accept="image/*" class="input-pedido">
@@ -381,7 +374,7 @@
             <button id="unlockPinBtn" class="btn-enviar">Desbloquear 🔓</button>
             <p id="pinErrorText" style="color: #c62828; font-size: 0.85rem; margin-top: 10px; display: none;">Senha incorreta!</p>
         </div>
-    </div>
+        </div>
 
     <!-- MODAL 5: RESULTADO REVELADO -->
     <div id="readModal" class="modal-overlay" style="display:none; z-index: 1010;">
@@ -393,35 +386,31 @@
         </div>
     </div>
 
-    <div id="version-badge">v0.51 • Atualizado</div>
+    <div id="version-badge">v0.53 • Atualizado</div>
 
     <audio id="audioStream" preload="none" crossorigin="anonymous"></audio>
 
     <script>
-        var versaoLocalSite = "0.51";
+        var versaoLocalSite = "0.53";
         var defaultCover = "https://zarafm.xyz/zaralogo.png?v=3";
         var globalCipher = null; 
         
         var earPalette = ["#2d2d2d", "#ffffff", "#ff6b6b", "#4cd7d0", "#3b82f6", "#a855f7", "#facc15", "#22c55e"];
 
-        function makeRoundRectPath(ctx, x, y, width, height, radius) {
-            ctx.beginPath(); 
-            ctx.moveTo(x + radius, y); 
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius); 
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); 
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius); 
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y); 
-            ctx.closePath();
-        }
+        // A color that never appears in earPalette, the card background, or
+        // the brand's pink/brown — used only for the 4 corner tracking dots
+        // (position, not data). This is what lets the scanner find, rotate,
+        // and scale the ear zone in an arbitrary photo, the same job a real
+        // QR's 3 corner "eye" patterns do.
+        var FIDUCIAL_HEX = '#ff00e5';
+        var FIDUCIAL_RGB = { r: 255, g: 0, b: 229 };
 
-        function roundRect(ctx, x, y, width, height, radius) {
-            makeRoundRectPath(ctx, x, y, width, height, radius);
-            ctx.fill();
-        }
+        // Bounding rectangle around the 5 ears, in the card's own 300x480
+        // space. The 4 tracking dots sit exactly at its corners — this
+        // object is the single shared source of truth for both drawing them
+        // (buildEarCard) and locating them later (tryDecodeEarFromCanvas), so
+        // the two can't drift out of sync the way the old geometry did.
+        var EAR_ZONE = { x0: 14, y0: 300, x1: 288, y1: 414 };
 
         function computeZaraChecksum(idDigits) {
             var sum = 0;
@@ -452,6 +441,48 @@
             var expectedChecksum = computeZaraChecksum(idDigits);
             if (readChecksum !== expectedChecksum) return null;
             return digitsToNumber(idDigits);
+        }
+
+        // The 15 sample points (5 ears x [left-half, right-half, accent dot]),
+        // expressed as fractions (u,v) of EAR_ZONE. Normalized coordinates
+        // let us re-map every point through whatever homography the 4
+        // tracking dots produce, regardless of the photo's scale/rotation.
+        function buildEarSamplePointsNormalized() {
+            var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
+            var baseY = startY + earH;
+            var points = [];
+            for (var i = 0; i < 5; i++) {
+                var x = startX + i * (earW + gap);
+                points.push({ x: x + 14, y: baseY - 8 });
+                points.push({ x: x + 36, y: baseY - 8 });
+                points.push({ x: x + 25, y: baseY - 24 });
+            }
+            return points.map(function(p) {
+                return {
+                    u: (p.x - EAR_ZONE.x0) / (EAR_ZONE.x1 - EAR_ZONE.x0),
+                    v: (p.y - EAR_ZONE.y0) / (EAR_ZONE.y1 - EAR_ZONE.y0)
+                };
+            });
+        }
+        var EAR_SAMPLE_POINTS_NORM = buildEarSamplePointsNormalized();
+
+        function makeRoundRectPath(ctx, x, y, width, height, radius) {
+            ctx.beginPath(); 
+            ctx.moveTo(x + radius, y); 
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius); 
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); 
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius); 
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y); 
+            ctx.closePath();
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            makeRoundRectPath(ctx, x, y, width, height, radius);
+            ctx.fill();
         }
 
         function setupItunesSearch(inputId, resultsId, onSelectCallback) {
@@ -641,6 +672,18 @@
         }
 
         function buildEarCard(title, artist, coverUrl, trackId) {
+            // *** THE REAL FIX ***
+            // Keeps the full-color ears (not turning them into a monochrome
+            // QR). What was actually missing wasn't color — it was a way for
+            // a scanner to *find* the ear region in an arbitrary photo. A
+            // real QR solves that with 3 corner "eye" patterns it searches
+            // for at any scale/rotation. We do the same trick here with 4
+            // small tracking dots in a color that never appears anywhere
+            // else on the card. The scanner locates all 4, computes the
+            // perspective transform between them and their known positions,
+            // and uses that to find each ear's exact pixel — regardless of
+            // camera angle, distance, or rotation. The ears themselves are
+            // untouched: still 8 colors, still hand-drawn.
             var colorIndices = encodeTrackId(trackId);
 
             var canvas = document.getElementById('earCanvas');
@@ -671,6 +714,10 @@
                 ctx.fillText(a.length > 28 ? a.substring(0, 25) + "..." : a, 150, 288);
                 ctx.globalAlpha = 1.0;
 
+                // Layout constants — buildEarSamplePointsNormalized() above
+                // derives its sample points from these same numbers, so if
+                // you ever tweak the geometry here, that's the only other
+                // place it needs to match.
                 var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
                 var tipY = startY - 6, baseY = startY + earH;
 
@@ -687,6 +734,9 @@
                         ctx.closePath();
                     }; })(x, cx);
 
+                    // One clean silhouette split into two big, unambiguous
+                    // solid halves (l, r) instead of three overlapping
+                    // hand-drawn shapes — easier to read back reliably.
                     ctx.save();
                     earPath();
                     ctx.clip();
@@ -696,6 +746,7 @@
                     ctx.fillStyle = earPalette[r];
                     ctx.fillRect(cx, tipY - 10, (earW / 2) + 10, earH + 20);
 
+                    // Soft glossy highlight near the tip, purely cosmetic.
                     ctx.beginPath();
                     ctx.ellipse(cx, tipY + 20, 7, 13, -0.35, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255,255,255,0.28)';
@@ -706,6 +757,8 @@
                     ctx.strokeStyle = '#462c26'; ctx.lineWidth = 2.5;
                     ctx.stroke();
 
+                    // Third data value (b) as a small solid accent dot,
+                    // kept well clear of the sample zone above it.
                     ctx.beginPath();
                     ctx.arc(cx, baseY - 24, 6, 0, Math.PI * 2);
                     ctx.fillStyle = earPalette[b];
@@ -714,8 +767,22 @@
                     ctx.stroke();
                 }
 
+                // The 4 fiducial tracking dots — position only, no data.
+                // White halo first for contrast against any background.
+                [[EAR_ZONE.x0, EAR_ZONE.y0], [EAR_ZONE.x1, EAR_ZONE.y0],
+                 [EAR_ZONE.x1, EAR_ZONE.y1], [EAR_ZONE.x0, EAR_ZONE.y1]].forEach(function(pt) {
+                    ctx.beginPath();
+                    ctx.arc(pt[0], pt[1], 10, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(pt[0], pt[1], 7, 0, Math.PI * 2);
+                    ctx.fillStyle = FIDUCIAL_HEX;
+                    ctx.fill();
+                });
+
                 ctx.font = 'bold 12px "Fredoka", sans-serif'; ctx.fillStyle = '#462c26'; ctx.globalAlpha = 0.6;
-                ctx.fillText("🐾 ZARACODE • EXCLUSIVE", 150, 440); ctx.globalAlpha = 1.0;
+                ctx.fillText("🐾 ZARACODE • EXCLUSIVE", 150, 452); ctx.globalAlpha = 1.0;
 
                 document.getElementById('downloadEarBtn').style.display = 'flex';
             }
@@ -741,23 +808,14 @@
         var currentScanMode = 'ear';
         var cameraStream = null;
         var cameraScanInterval = null;
-        var earAutoScanInterval = null;
-        var earDecodeBusy = false;
-
-        function setEarStatus(msg) {
-            var el = document.getElementById('earScanStatus');
-            if (el) el.innerText = msg;
-        }
 
         function openScanner(mode) {
             currentScanMode = mode;
             var isEar = mode === 'ear';
             document.getElementById('scannerModalTitle').innerText = isEar ? '📷 Ler ZaraCode' : '📷 Ler Fluffytag';
             document.getElementById('scannerModalText').innerText = isEar
-                ? 'A leitura é automática: encaixe o card inteiro dentro da guia para ler.'
+                ? 'A leitura é automática: mostre o card com os 4 pontinhos dos cantos visíveis e bem iluminados.'
                 : 'Toque em "Usar Câmera" e aponte para o QR — a leitura é automática. Ou envie uma foto.';
-            document.getElementById('earScanStatus').style.display = isEar ? 'block' : 'none';
-            if (isEar) setEarStatus('');
             document.getElementById('scannerModal').style.display = 'flex';
         }
 
@@ -791,14 +849,12 @@
 
                 video.onloadedmetadata = function() {
                     if (currentScanMode === 'ear') {
-                        updateGuideOverlay();
-                        document.getElementById('captureFrameBtn').style.display = 'block';
-                        setEarStatus('Aponte para o card — a leitura é automática 🔍');
-                        earAutoScanInterval = setInterval(autoScanEarFrame, 350);
+                        // Fiducial-marker detection: locate the 4 tracking
+                        // dots anywhere in frame, at any angle/rotation.
+                        cameraScanInterval = setInterval(scanEarFrame, 350);
                     } else {
-                        document.getElementById('scannerGuide').style.display = 'none';
-                        document.getElementById('captureFrameBtn').style.display = 'none';
-                        cameraScanInterval = setInterval(scanFluffyFrame, 300);
+                        // Real QR: jsQR auto-detects position/rotation/scale.
+                        cameraScanInterval = setInterval(scanQrFrame, 300);
                     }
                 };
             }).catch(function(err) {
@@ -808,7 +864,6 @@
 
         function stopCamera() {
             if (cameraScanInterval) { clearInterval(cameraScanInterval); cameraScanInterval = null; }
-            if (earAutoScanInterval) { clearInterval(earAutoScanInterval); earAutoScanInterval = null; }
             if (cameraStream) {
                 cameraStream.getTracks().forEach(function(track) { track.stop(); });
                 cameraStream = null;
@@ -817,82 +872,10 @@
             video.onloadedmetadata = null;
             video.srcObject = null;
             document.getElementById('scannerVideoWrap').style.display = 'none';
-            document.getElementById('scannerGuide').style.display = 'none';
-            document.getElementById('captureFrameBtn').style.display = 'none';
             document.getElementById('toggleCameraBtn').innerText = '📷 Usar Câmera';
         }
 
-        window.addEventListener('resize', function() {
-            if (cameraStream && currentScanMode === 'ear') updateGuideOverlay();
-        });
-
-        function updateGuideOverlay() {
-            var video = document.getElementById('scannerVideo');
-            var guide = document.getElementById('scannerGuide');
-            if (!video.videoWidth) return;
-            var displayedW = video.clientWidth;
-            var displayedH = video.clientHeight;
-            // The guide now matches the card's own shape (300:480, portrait)
-            // instead of a bare, marker-less strip meant to isolate just the
-            // ears. Nothing on the physical card shows where an "ears only"
-            // crop should begin or end, so that box was never reliably
-            // alignable by eye. The whole card has a visible edge people can
-            // actually line up — the same thing that already works for photo
-            // uploads of the full card.
-            var guideW = displayedW * 0.72;
-            var guideH = guideW * (480 / 300);
-            if (guideH > displayedH * 0.92) { guideH = displayedH * 0.92; guideW = guideH * (300 / 480); }
-
-            guide.style.width = guideW + 'px';
-            guide.style.height = guideH + 'px';
-            guide.style.left = ((displayedW - guideW) / 2) + 'px';
-            guide.style.top = ((displayedH - guideH) / 2) + 'px';
-            guide.style.display = 'block';
-        }
-
-        function guideRectForVideo(video) {
-            var displayedW = video.clientWidth;
-            var displayedH = video.clientHeight;
-            var guideW = displayedW * 0.72;
-            var guideH = guideW * (480 / 300);
-            if (guideH > displayedH * 0.92) { guideH = displayedH * 0.92; guideW = guideH * (300 / 480); }
-            var scale = video.videoWidth / displayedW;
-            return {
-                sx: ((displayedW - guideW) / 2) * scale,
-                sy: ((displayedH - guideH) / 2) * scale,
-                sw: guideW * scale,
-                sh: guideH * scale
-            };
-        }
-
-        function autoScanEarFrame() {
-            if (earDecodeBusy || currentScanMode !== 'ear' || !cameraStream) return;
-            var video = document.getElementById('scannerVideo');
-            if (!video.videoWidth) return;
-            var rct = guideRectForVideo(video);
-            var canvas = document.getElementById('scannerCaptureCanvas');
-            // Always crop to the card's own resolution (300x480) now that the
-            // guide matches its shape — this is the one and only decode path,
-            // shared with the file-upload branch below.
-            canvas.width = 300;
-            canvas.height = 480;
-            var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, 300, 480);
-            runEarDecode(canvas, false);
-        }
-
-        document.getElementById('captureFrameBtn').addEventListener('click', function() {
-            var video = document.getElementById('scannerVideo');
-            if (!video.videoWidth) return;
-            var rct = guideRectForVideo(video);
-            var canvas = document.getElementById('scannerCaptureCanvas');
-            canvas.width = 300; canvas.height = 480;
-            var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(video, rct.sx, rct.sy, rct.sw, rct.sh, 0, 0, 300, 480);
-            runEarDecode(canvas, false);
-        });
-
-        function scanFluffyFrame() {
+        function scanQrFrame() {
             var video = document.getElementById('scannerVideo');
             if (!video.videoWidth) return;
             var canvas = document.getElementById('scannerCaptureCanvas');
@@ -900,16 +883,19 @@
             canvas.height = video.videoHeight;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            tryDecodeFluffyFromCanvas(canvas, ctx, false);
+            tryDecodeQrFromCanvas(canvas, ctx, false);
         }
 
-        function tryDecodeFluffyFromCanvas(canvas, ctx, isUpload) {
-            if (typeof jsQR === 'undefined') return;
+        function tryDecodeQrFromCanvas(canvas, ctx, isUpload) {
+            if (typeof jsQR === 'undefined') {
+                if (isUpload) alert('A biblioteca de leitura de QR não carregou. Verifique sua conexão e tente novamente.');
+                return;
+            }
             var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             var result = jsQR(imgData.data, imgData.width, imgData.height);
             if (!result) {
                 if (isUpload) mostrarResultadoLeitura({ title: "Não consegui ler esse QR 😿", artist: "Tente uma foto mais nítida e bem enquadrada", cover: defaultCover });
-                return;
+                return; // câmera: continua tentando silenciosamente no próximo frame
             }
             var match = result.data.match(/[?&]miau=([^&]+)/);
             if (!match) {
@@ -918,6 +904,216 @@
             }
             closeScanner();
             tratarDadosLeitura(match[1]);
+        }
+
+        // --- DETECÇÃO DO ZARACODE POR MARCADORES (câmera ou foto) ---
+        // No QR involved here. This finds the 4 fiducial dots by color,
+        // computes the perspective transform (homography) between their
+        // known positions and where they actually landed in the photo, and
+        // uses that to map every ear sample point precisely — regardless of
+        // how the card is rotated, tilted, or how far away it is.
+
+        function colorDistSq(r, g, b, ref) {
+            var dr = r - ref.r, dg = g - ref.g, db = b - ref.b;
+            return dr * dr + dg * dg + db * db;
+        }
+
+        function findFiducialBlobs(imgData, W, H) {
+            var visited = new Uint8Array(W * H);
+            var blobs = [];
+            var data = imgData.data;
+            var TOLERANCE = 4200;
+
+            function isMarkerPixel(idx) {
+                var i = idx * 4;
+                return colorDistSq(data[i], data[i + 1], data[i + 2], FIDUCIAL_RGB) < TOLERANCE;
+            }
+
+            for (var y = 0; y < H; y++) {
+                for (var x = 0; x < W; x++) {
+                    var idx = y * W + x;
+                    if (visited[idx] || !isMarkerPixel(idx)) continue;
+
+                    var stack = [idx];
+                    visited[idx] = 1;
+                    var sumX = 0, sumY = 0, count = 0;
+                    var minX = x, maxX = x, minY = y, maxY = y;
+
+                    while (stack.length) {
+                        var cur = stack.pop();
+                        var cx = cur % W, cy = (cur / W) | 0;
+                        sumX += cx; sumY += cy; count++;
+                        if (cx < minX) minX = cx; if (cx > maxX) maxX = cx;
+                        if (cy < minY) minY = cy; if (cy > maxY) maxY = cy;
+
+                        var left = cur - 1, right = cur + 1, up = cur - W, down = cur + W;
+                        var candidates = [
+                            (cx > 0) ? left : -1,
+                            (cx < W - 1) ? right : -1,
+                            up, down
+                        ];
+                        for (var n = 0; n < 4; n++) {
+                            var nb = candidates[n];
+                            if (nb < 0 || nb >= W * H || visited[nb]) continue;
+                            if (isMarkerPixel(nb)) { visited[nb] = 1; stack.push(nb); }
+                            else visited[nb] = 1;
+                        }
+                    }
+
+                    if (count >= 12) {
+                        blobs.push({ x: sumX / count, y: sumY / count, count: count, w: maxX - minX + 1, h: maxY - minY + 1 });
+                    }
+                }
+            }
+            return blobs;
+        }
+
+        function pickFourCorners(blobs) {
+            if (blobs.length < 4) return null;
+            var candidates = blobs.filter(function(b) {
+                var ratio = b.w / b.h;
+                return ratio > 0.35 && ratio < 2.8;
+            });
+            if (candidates.length < 4) candidates = blobs;
+
+            candidates.sort(function(a, b) { return b.count - a.count; });
+            var four = candidates.slice(0, 4);
+            if (four.length < 4) return null;
+
+            var tl = four[0], tr = four[0], bl = four[0], br = four[0];
+            var minSum = Infinity, maxSum = -Infinity, minDiff = Infinity, maxDiff = -Infinity;
+            four.forEach(function(p) {
+                var sum = p.x + p.y, diff = p.x - p.y;
+                if (sum < minSum) { minSum = sum; tl = p; }
+                if (sum > maxSum) { maxSum = sum; br = p; }
+                if (diff > maxDiff) { maxDiff = diff; tr = p; }
+                if (diff < minDiff) { minDiff = diff; bl = p; }
+            });
+            return { tl: tl, tr: tr, br: br, bl: bl };
+        }
+
+        function solveLinearSystem(A, b) {
+            var n = b.length;
+            for (var i = 0; i < n; i++) A[i].push(b[i]);
+            for (var col = 0; col < n; col++) {
+                var maxRow = col;
+                for (var r = col + 1; r < n; r++) {
+                    if (Math.abs(A[r][col]) > Math.abs(A[maxRow][col])) maxRow = r;
+                }
+                var tmp = A[col]; A[col] = A[maxRow]; A[maxRow] = tmp;
+                if (Math.abs(A[col][col]) < 1e-10) return null;
+                for (var r2 = 0; r2 < n; r2++) {
+                    if (r2 === col) continue;
+                    var factor = A[r2][col] / A[col][col];
+                    for (var c = col; c <= n; c++) A[r2][c] -= factor * A[col][c];
+                }
+            }
+            var x = [];
+            for (var i2 = 0; i2 < n; i2++) x.push(A[i2][n] / A[i2][i2]);
+            return x;
+        }
+
+        function computeHomography(src, dst) {
+            var A = [], b = [];
+            for (var i = 0; i < 4; i++) {
+                var x = src[i].x, y = src[i].y, xp = dst[i].x, yp = dst[i].y;
+                A.push([x, y, 1, 0, 0, 0, -x * xp, -y * xp]); b.push(xp);
+                A.push([0, 0, 0, x, y, 1, -x * yp, -y * yp]); b.push(yp);
+            }
+            var h = solveLinearSystem(A, b);
+            if (!h) return null;
+            return { h11: h[0], h12: h[1], h13: h[2], h21: h[3], h22: h[4], h23: h[5], h31: h[6], h32: h[7] };
+        }
+
+        function applyHomography(H, x, y) {
+            var denom = H.h31 * x + H.h32 * y + 1;
+            return { x: (H.h11 * x + H.h12 * y + H.h13) / denom, y: (H.h21 * x + H.h22 * y + H.h23) / denom };
+        }
+
+        function getClosestColorIndex(r, g, b) {
+            var minDist = Infinity, bestIdx = -1;
+            for (var i = 0; i < earPalette.length; i++) {
+                var hex = earPalette[i];
+                var pr = parseInt(hex.slice(1, 3), 16), pg = parseInt(hex.slice(3, 5), 16), pb = parseInt(hex.slice(5, 7), 16);
+                var rmean = (r + pr) / 2, dr = r - pr, dg = g - pg, db = b - pb;
+                var dist = ((2 + rmean / 256) * dr * dr) + (4 * dg * dg) + ((2 + (255 - rmean) / 256) * db * db);
+                if (dist < minDist) { minDist = dist; bestIdx = i; }
+            }
+            if (minDist > 12000) return -1; // amostra longe demais de qualquer cor conhecida
+            return bestIdx;
+        }
+
+        function getSampleIndexAt(data, W, H, cx, cy) {
+            var r = 0, g = 0, b = 0, n = 0;
+            var radius = 3;
+            for (var dy = -radius; dy <= radius; dy++) {
+                for (var dx = -radius; dx <= radius; dx++) {
+                    var px = Math.round(cx + dx), py = Math.round(cy + dy);
+                    if (px >= 0 && px < W && py >= 0 && py < H) {
+                        var i = (py * W + px) * 4;
+                        r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+                    }
+                }
+            }
+            if (!n) return -1;
+            return getClosestColorIndex(r / n, g / n, b / n);
+        }
+
+        function scanEarFrame() {
+            var video = document.getElementById('scannerVideo');
+            if (!video.videoWidth) return;
+            // Downscale for speed — marker centroids/homography don't need
+            // full resolution, and this keeps blob detection fast per frame.
+            var scale = Math.min(1, 480 / video.videoWidth);
+            var w = Math.round(video.videoWidth * scale), h = Math.round(video.videoHeight * scale);
+            var canvas = document.getElementById('scannerCaptureCanvas');
+            canvas.width = w; canvas.height = h;
+            var ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, w, h);
+            tryDecodeEarFromCanvas(canvas, ctx, false);
+        }
+
+        function tryDecodeEarFromCanvas(canvas, ctx, isUpload) {
+            var W = canvas.width, H = canvas.height;
+            var imgData = ctx.getImageData(0, 0, W, H);
+
+            var blobs = findFiducialBlobs(imgData, W, H);
+            var corners = pickFourCorners(blobs);
+            if (!corners) {
+                if (isUpload) mostrarResultadoLeitura({ title: "Não encontrei os 4 marcadores 😿", artist: "Garanta que os 4 pontinhos coloridos dos cantos estejam visíveis e bem iluminados", cover: defaultCover });
+                return; // câmera: continua tentando silenciosamente
+            }
+
+            var H_matrix = computeHomography(
+                [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
+                [corners.tl, corners.tr, corners.br, corners.bl]
+            );
+            if (!H_matrix) {
+                if (isUpload) mostrarResultadoLeitura({ title: "Não consegui calcular a posição do card 😿", artist: "Tente novamente com o card mais reto em relação à câmera", cover: defaultCover });
+                return;
+            }
+
+            var indices = [], failed = 0, data = imgData.data;
+            for (var i = 0; i < EAR_SAMPLE_POINTS_NORM.length; i++) {
+                var p = applyHomography(H_matrix, EAR_SAMPLE_POINTS_NORM[i].u, EAR_SAMPLE_POINTS_NORM[i].v);
+                var idx = getSampleIndexAt(data, W, H, p.x, p.y);
+                if (idx === -1) { failed++; idx = 0; }
+                indices.push(idx);
+            }
+
+            if (failed > 4) {
+                if (isUpload) mostrarResultadoLeitura({ title: "Não consegui ler esse código 😿", artist: "Aproxime um pouco mais e tente de novo, com boa luz", cover: defaultCover });
+                return;
+            }
+
+            var trackId = decodeZaraCode(indices);
+            if (trackId === null) {
+                if (isUpload) mostrarResultadoLeitura({ title: "Não consegui ler esse código 😿", artist: "Tente um ângulo ou distância diferente, com boa luz", cover: defaultCover });
+                return; // câmera: continua tentando silenciosamente
+            }
+
+            closeScanner();
+            lookupTrackAndShow(trackId);
         }
 
         function tratarDadosLeitura(param) {
@@ -936,7 +1132,12 @@
         window.addEventListener('DOMContentLoaded', function() {
             var params = new URLSearchParams(window.location.search);
             if (params.has('miau')) {
-                tratarDadosLeitura(params.get('miau'));
+                var param = params.get('miau');
+                if (/^\d+$/.test(param)) {
+                    lookupTrackAndShow(param);
+                } else {
+                    tratarDadosLeitura(param);
+                }
                 window.history.replaceState({}, '', window.location.pathname);
             }
         });
@@ -974,20 +1175,22 @@
                     var canvas = document.createElement('canvas');
                     var ctx;
                     if (currentScanMode === 'fluffy') {
+                        // Um QR real detecta a si mesmo em qualquer resolução —
+                        // sem redimensionar/forçar em nenhum tamanho fixo.
                         canvas.width = img.naturalWidth;
                         canvas.height = img.naturalHeight;
                         ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
-                        tryDecodeFluffyFromCanvas(canvas, ctx, true);
+                        tryDecodeQrFromCanvas(canvas, ctx, true);
                     } else {
-                        // Always treat the photo as a shot of the whole card —
-                        // this is the same crop shape the camera guide now
-                        // produces, so there's a single decode path for both.
-                        canvas.width = 300;
-                        canvas.height = 480;
+                        // Mesmo pipeline de marcadores usado pela câmera —
+                        // reduzido a uma largura razoável só por desempenho.
+                        var scale = Math.min(1, 900 / img.naturalWidth);
+                        canvas.width = Math.round(img.naturalWidth * scale);
+                        canvas.height = Math.round(img.naturalHeight * scale);
                         ctx = canvas.getContext('2d', { willReadFrequently: true });
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        runEarDecode(canvas, true);
+                        tryDecodeEarFromCanvas(canvas, ctx, true);
                     }
                     document.getElementById('scannerFileInput').value = "";
                 };
@@ -995,112 +1198,6 @@
             };
             reader.readAsDataURL(file);
         });
-
-        // --- LÓGICA DE ALTA TOLERÂNCIA E FLEXIBILIDADE DO ZARACODE ---
-        function runEarDecode(canvas, isUpload) {
-            if (earDecodeBusy) return;
-            earDecodeBusy = true;
-            if (!isUpload) setEarStatus('Analisando orelhinhas... 🐾');
-
-            var trackId = sampleAndDecode(canvas, isUpload);
-
-            earDecodeBusy = false;
-            if (trackId === null) {
-                if (isUpload) {
-                    mostrarResultadoLeitura({
-                        title: "Não consegui ler esse código 😿",
-                        artist: "Certifique-se de enviar a imagem nítida e completa do card ou das orelhas.",
-                        cover: defaultCover
-                    });
-                } else {
-                    setEarStatus('Ainda nada... encaixe o card inteiro na guia 🐾');
-                }
-                return;
-            }
-            setEarStatus('Código lido! 🎉');
-            closeScanner();
-            lookupTrackAndShow(trackId);
-        }
-
-        function sampleAndDecode(canvas, isUpload) {
-            var W = canvas.width, H = canvas.height;
-            var ctx = canvas.getContext('2d', { willReadFrequently: true });
-            var imgData = ctx.getImageData(0, 0, W, H).data;
-
-            // One decode path, shared by camera and upload — both now feed in
-            // a crop of the *whole card* at (or scaled to) its native 300x480
-            // layout. Previously there were two branches here: this one
-            // (correct, with the +22 startX offset matching drawStyledCatEars)
-            // and a second "narrow crop" branch that dropped that offset,
-            // sampling ~22px away from the actual ears. That second branch was
-            // the camera scanner's silent failure — it never had a chance to
-            // land on the right pixels, however well the photo was aligned.
-            var indices = [];
-            var failed = 0;
-
-            for (var i = 0; i < 5; i++) {
-                var fx = 22 + (i * 54);
-                var earX = fx * (W / 300);
-                var yLR = 388 * (H / 480);
-                var yB = 376 * (H / 480);
-
-                var idxLeft  = getSampleIndex(imgData, W, H, earX + 14 * (W / 300), yLR);
-                var idxRight = getSampleIndex(imgData, W, H, earX + 36 * (W / 300), yLR);
-                var idxDot   = getSampleIndex(imgData, W, H, earX + 25 * (W / 300), yB);
-
-                if (idxLeft === -1) { failed++; idxLeft = 0; }
-                if (idxRight === -1) { failed++; idxRight = 0; }
-                if (idxDot === -1) { failed++; idxDot = 0; }
-                indices.push(idxLeft, idxRight, idxDot);
-            }
-
-            // Aumentada a tolerância para aceitar leituras mesmo com variação de luz/ângulo
-            if (failed > 6) return null;
-            var allZero = true;
-            for (var k = 0; k < indices.length; k++) {
-                if (indices[k] !== 0) { allZero = false; break; }
-            }
-            if (allZero) return null;
-
-            return decodeZaraCode(indices);
-        }
-
-        function getSampleIndex(img, W, H, cx, cy) {
-            var r = 0, g = 0, b = 0, n = 0;
-            // Raio de amostragem mais generoso para absorver pequenas variações
-            var radius = Math.max(2, Math.floor(W * 0.025));
-
-            for (var dy = -radius; dy <= radius; dy++) {
-                for (var dx = -radius; dx <= radius; dx++) {
-                    var px = Math.floor(cx + dx);
-                    var py = Math.floor(cy + dy);
-                    if (px >= 0 && px < W && py >= 0 && py < H) {
-                        var i = (py * W + px) * 4;
-                        r += img[i]; g += img[i + 1]; b += img[i + 2]; n++;
-                    }
-                }
-            }
-            if (!n) return -1;
-            return getClosestColorIndex(r / n, g / n, b / n);
-        }
-
-        function getClosestColorIndex(r, g, b) {
-            var minDist = Infinity;
-            var bestIdx = -1;
-            for (var i = 0; i < earPalette.length; i++) {
-                var hex = earPalette[i];
-                var pr = parseInt(hex.slice(1,3), 16);
-                var pg = parseInt(hex.slice(3,5), 16);
-                var pb = parseInt(hex.slice(5,7), 16);
-                var dr = r - pr, dg = g - pg, db = b - pb;
-                // Distância euclidiana padrão com alta tolerância para iluminação ambiente/flash
-                var dist = (dr * dr * 2) + (dg * dg * 4) + (db * db * 3);
-                if (dist < minDist) { minDist = dist; bestIdx = i; }
-            }
-            // Limite muito mais permissivo para evitar rejeições injustas por sombra/luz
-            if (minDist > 55000) return -1;
-            return bestIdx;
-        }
 
         function lookupTrackAndShow(trackId) {
             mostrarResultadoLeitura({ title: "Verificando... 🔍", artist: "Consultando a faixa no banco da Apple", cover: defaultCover });
