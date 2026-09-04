@@ -297,7 +297,6 @@
         </div>
     </div>
 
-    <!-- MODAL 1: FLUFFYTAG COM OPÇÃO DE SENHA -->
     <div id="fluffyModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
@@ -324,7 +323,6 @@
         </div>
     </div>
 
-    <!-- MODAL 2: ZARACODE -->
     <div id="earCodeModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
@@ -345,7 +343,6 @@
         </div>
     </div>
 
-    <!-- MODAL 3: SCANNER UNIFICADO -->
     <div id="scannerModal" class="modal-overlay" style="display:none;">
         <div class="modal-content">
             <h2 id="scannerModalTitle">📷 Ler Código</h2>
@@ -365,7 +362,6 @@
         </div>
     </div>
 
-    <!-- MODAL 4: DIGITAR SENHA (FLUFFYTAG PROTEGIDO) -->
     <div id="pinModal" class="modal-overlay" style="display:none; z-index: 1005;">
         <div class="modal-content">
             <h2>🔒 Tag Protegida</h2>
@@ -376,7 +372,6 @@
         </div>
     </div>
 
-    <!-- MODAL 5: RESULTADO REVELADO -->
     <div id="readModal" class="modal-overlay" style="display:none; z-index: 1010;">
         <div class="modal-content">
             <h2>🎵 Memória Revelada!</h2>
@@ -395,33 +390,11 @@
         var defaultCover = "https://zarafm.xyz/zaralogo.png?v=3";
         var globalCipher = null; 
         
-        // Palette + fiducial color, chosen together as 9 hues evenly spaced
-        // (~40° apart) around the color wheel at matching saturation/lightness.
-        // Building them from one shared "recipe" means every pair sits at a
-        // predictable, roughly equal distance from every other in normalized-
-        // color space — nothing is accidentally close to anything else, which
-        // matters a lot once matching has to tolerate real camera noise.
         var earPalette = ["#ec1313", "#eca413", "#a4ec13", "#13ec13", "#13eca4", "#13a4ec", "#1313ec", "#a413ec"];
 
-        // A color that never appears in earPalette, the card background, or
-        // the brand's pink/brown — used only for the 4 corner tracking dots
-        // (position, not data). This is what lets the scanner find, rotate,
-        // and scale the ear zone in an arbitrary photo, the same job a real
-        // QR's 3 corner "eye" patterns do. It sits in the one ~80°-wide gap
-        // left open by the palette above, evenly spaced from its neighbors.
         var FIDUCIAL_HEX = '#ec13a4';
         var FIDUCIAL_RGB = { r: 236, g: 19, b: 164 };
 
-        // --- Brightness/lighting-tolerant color matching -------------------
-        // A camera photo's raw R/G/B values shift a lot with exposure and
-        // white balance — a color that's simply darker (less light hitting
-        // the sensor) produces completely different numbers even though a
-        // person would call it "the same color." Chromaticity — each channel
-        // divided by the sum of all three — cancels out uniform brightness
-        // changes almost entirely, so matching happens in that space instead
-        // of raw RGB. (This is also exactly why every palette color above is
-        // a saturated hue rather than gray/black/white: brightness is the one
-        // thing this normalization can no longer tell apart.)
         function chromaOf(r, g, b) {
             var sum = r + g + b;
             if (sum < 3) sum = 3;
@@ -431,10 +404,8 @@
             var dr = c1.r - c2.r, dg = c1.g - c2.g, db = c1.b - c2.b;
             return dr * dr + dg * dg + db * db;
         }
-        // Deep-shadow / near-black pixels have unstable, meaningless
-        // chromaticity (tiny numbers divided by tiny numbers) — below this
-        // total brightness, a sample is rejected instead of guessed at.
-        var MIN_SAMPLE_BRIGHTNESS = 24;
+
+        var MIN_SAMPLE_BRIGHTNESS = 12;
 
         var PALETTE_CHROMA = earPalette.map(function(hex) {
             var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
@@ -442,23 +413,9 @@
         });
         var FIDUCIAL_CHROMA = chromaOf(FIDUCIAL_RGB.r, FIDUCIAL_RGB.g, FIDUCIAL_RGB.b);
 
-        // With the palette spaced as above, the closest any two colors (data
-        // or fiducial) ever get to each other is ~0.06 squared chroma-distance.
-        // These thresholds sit below that gap, so real lighting/white-balance
-        // noise gets absorbed without two different colors ever being
-        // confused for one another. Widened from the original 0.03/0.035 to
-        // be more forgiving of imperfect live-camera lighting, while still
-        // leaving a safety margin under the 0.06 collision point.
-        var FIDUCIAL_CHROMA_TOLERANCE = 0.04;
-        var CHROMA_REJECT_THRESHOLD = 0.045;
+        var FIDUCIAL_CHROMA_TOLERANCE = 0.15;
+        var CHROMA_REJECT_THRESHOLD = 0.40;
 
-        // Bounding rectangle around the 5 ears, in the card's own 300x480
-        // space. The 3 tracking dots — top-left, top-right, and bottom-center,
-        // the same layout as a QR code's finder pattern — sit exactly at its
-        // top corners and bottom midpoint. This object is the single shared
-        // source of truth for both drawing them (buildEarCard) and locating
-        // them later (tryDecodeEarFromCanvas), so the two can't drift out of
-        // sync the way the old geometry did.
         var EAR_ZONE = { x0: 14, y0: 300, x1: 288, y1: 414 };
 
         function computeZaraChecksum(idDigits) {
@@ -492,10 +449,6 @@
             return digitsToNumber(idDigits);
         }
 
-        // The 15 sample points (5 ears x [left-half, right-half, accent dot]),
-        // expressed as fractions (u,v) of EAR_ZONE. Normalized coordinates
-        // let us re-map every point through whatever affine transform the 3
-        // tracking dots produce, regardless of the photo's scale/rotation.
         function buildEarSamplePointsNormalized() {
             var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
             var baseY = startY + earH;
@@ -570,7 +523,6 @@
             });
         }
 
-        // --- FLUFFYTAG (QR COM SENHA) ---
         var fluffyTrack = null;
         var fluffyCurrentUrl = "";
 
@@ -672,7 +624,6 @@
             link.click();
         });
 
-        // --- ZARACODE ---
         var earTrack = null;
 
         setupItunesSearch('earSearchInput', 'earSearchResults', function(track) {
@@ -721,18 +672,6 @@
         }
 
         function buildEarCard(title, artist, coverUrl, trackId) {
-            // *** THE REAL FIX ***
-            // Keeps the full-color ears (not turning them into a monochrome
-            // QR). What was actually missing wasn't color — it was a way for
-            // a scanner to *find* the ear region in an arbitrary photo. A
-            // real QR solves that with 3 corner "eye" patterns it searches
-            // for at any scale/rotation. We do the same trick here with 4
-            // small tracking dots in a color that never appears anywhere
-            // else on the card. The scanner locates all 4, computes the
-            // perspective transform between them and their known positions,
-            // and uses that to find each ear's exact pixel — regardless of
-            // camera angle, distance, or rotation. The ears themselves are
-            // untouched: still 8 colors, still hand-drawn.
             var colorIndices = encodeTrackId(trackId);
 
             var canvas = document.getElementById('earCanvas');
@@ -763,10 +702,6 @@
                 ctx.fillText(a.length > 28 ? a.substring(0, 25) + "..." : a, 150, 288);
                 ctx.globalAlpha = 1.0;
 
-                // Layout constants — buildEarSamplePointsNormalized() above
-                // derives its sample points from these same numbers, so if
-                // you ever tweak the geometry here, that's the only other
-                // place it needs to match.
                 var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
                 var tipY = startY - 6, baseY = startY + earH;
 
@@ -783,9 +718,6 @@
                         ctx.closePath();
                     }; })(x, cx);
 
-                    // One clean silhouette split into two big, unambiguous
-                    // solid halves (l, r) instead of three overlapping
-                    // hand-drawn shapes — easier to read back reliably.
                     ctx.save();
                     earPath();
                     ctx.clip();
@@ -795,7 +727,6 @@
                     ctx.fillStyle = earPalette[r];
                     ctx.fillRect(cx, tipY - 10, (earW / 2) + 10, earH + 20);
 
-                    // Soft glossy highlight near the tip, purely cosmetic.
                     ctx.beginPath();
                     ctx.ellipse(cx, tipY + 20, 7, 13, -0.35, 0, Math.PI * 2);
                     ctx.fillStyle = 'rgba(255,255,255,0.28)';
@@ -806,8 +737,6 @@
                     ctx.strokeStyle = '#462c26'; ctx.lineWidth = 2.5;
                     ctx.stroke();
 
-                    // Third data value (b) as a small solid accent dot,
-                    // kept well clear of the sample zone above it.
                     ctx.beginPath();
                     ctx.arc(cx, baseY - 24, 6, 0, Math.PI * 2);
                     ctx.fillStyle = earPalette[b];
@@ -816,10 +745,6 @@
                     ctx.stroke();
                 }
 
-                // The 3 fiducial tracking dots — position only, no data.
-                // Two on top, one centered on the bottom, like a QR code's
-                // finder pattern. White halo first for contrast against any
-                // background.
                 [[EAR_ZONE.x0, EAR_ZONE.y0], [EAR_ZONE.x1, EAR_ZONE.y0],
                  [(EAR_ZONE.x0 + EAR_ZONE.x1) / 2, EAR_ZONE.y1]].forEach(function(pt) {
                     ctx.beginPath();
@@ -854,8 +779,6 @@
             link.click();
         });
 
-
-        // --- SCANNER UNIFICADO ---
         var currentScanMode = 'ear';
         var cameraStream = null;
         var cameraScanInterval = null;
@@ -900,11 +823,8 @@
 
                 video.onloadedmetadata = function() {
                     if (currentScanMode === 'ear') {
-                        // Fiducial-marker detection: locate the 3 tracking
-                        // dots anywhere in frame, at any angle/rotation.
                         cameraScanInterval = setInterval(scanEarFrame, 350);
                     } else {
-                        // Real QR: jsQR auto-detects position/rotation/scale.
                         cameraScanInterval = setInterval(scanQrFrame, 300);
                     }
                 };
@@ -946,7 +866,7 @@
             var result = jsQR(imgData.data, imgData.width, imgData.height);
             if (!result) {
                 if (isUpload) mostrarResultadoLeitura({ title: "Não consegui ler esse QR 😿", artist: "Tente uma foto mais nítida e bem enquadrada", cover: defaultCover });
-                return; // câmera: continua tentando silenciosamente no próximo frame
+                return;
             }
             var match = result.data.match(/[?&]miau=([^&]+)/);
             if (!match) {
@@ -957,23 +877,11 @@
             tratarDadosLeitura(match[1]);
         }
 
-        // --- DETECÇÃO DO ZARACODE POR MARCADORES (câmera ou foto) ---
-        // No QR involved here. This finds the 3 fiducial dots by color,
-        // computes the affine transform between their known positions and
-        // where they actually landed in the photo, and uses that to map
-        // every ear sample point precisely — regardless of how the card is
-        // rotated, scaled, or how far away it is. Three points (rather than
-        // four) is both easier to fit fully in frame on a live camera and
-        // cheaper/more stable to solve for — an affine fit only needs 3
-        // correspondences, versus 4 for a full perspective homography.
-
         function findFiducialBlobs(imgData, W, H) {
             var visited = new Uint8Array(W * H);
             var blobs = [];
             var data = imgData.data;
 
-            // Chromaticity match instead of raw RGB — tolerant to the whole
-            // frame being darker/brighter, not just an exact color.
             function isMarkerPixel(idx) {
                 var i = idx * 4;
                 var r = data[i], g = data[i + 1], b = data[i + 2];
@@ -1016,9 +924,6 @@
                     }
 
                     if (count >= 9) {
-                        // avgR/G/B (the dot's *actual* photographed color) is
-                        // kept so the caller can compare it against the known
-                        // true fiducial color and derive a white-balance fix.
                         blobs.push({
                             x: sumX / count, y: sumY / count, count: count,
                             w: maxX - minX + 1, h: maxY - minY + 1,
@@ -1030,9 +935,6 @@
             return blobs;
         }
 
-        // Picks the 3 tracking-dot blobs and labels them tl / tr / bc
-        // (bottom-center), the same way a QR reader identifies its 3 finder
-        // squares — without assuming the card is roughly upright in frame.
         function pickThreeCorners(blobs) {
             if (blobs.length < 3) return null;
             var candidates = blobs.filter(function(b) {
@@ -1045,11 +947,7 @@
             var three = candidates.slice(0, 3);
             if (three.length < 3) return null;
 
-            // The two top dots sit a whole card-width apart, while either
-            // one to the bottom dot is a shorter diagonal — so whichever
-            // pair is mutually farthest apart is the top pair, regardless
-            // of how the card is rotated in frame.
-            var pairIdx = [[0, 1, 2], [0, 2, 1], [1, 2, 0]]; // [a, b, remaining]
+            var pairIdx = [[0, 1, 2], [0, 2, 1], [1, 2, 0]]; 
             var bestPair = null, bestDistSq = -1;
             pairIdx.forEach(function(idx) {
                 var a = three[idx[0]], b = three[idx[1]];
@@ -1059,9 +957,6 @@
             });
             var a = three[bestPair[0]], b = three[bestPair[1]], bc = three[bestPair[2]];
 
-            // Orient a/b into tl/tr using the perpendicular of the a->b axis:
-            // whichever side of that axis the bottom dot falls on defines
-            // "down", which in turn tells us which of a/b is "left".
             var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
             var ex = b.x - a.x, ey = b.y - a.y;
             var cross = ex * (bc.y - my) - ey * (bc.x - mx);
@@ -1092,12 +987,6 @@
             return x;
         }
 
-        // 3-point affine fit: solve for [a,b,c] / [d,e,f] such that
-        // x' = a*x + b*y + c and y' = d*x + e*y + f map each normalized
-        // src point onto its detected dst point. Needs only 3 correspondences
-        // (vs. 4 for a full perspective homography), which is exactly what
-        // 3 tracking dots give us — and is plenty for a flat card photographed
-        // at a normal angle.
         function computeAffine(src, dst) {
             function cloneRows(rows) { return rows.map(function(r) { return r.slice(); }); }
             var baseA = [
@@ -1116,20 +1005,20 @@
         }
 
         function getClosestColorIndex(r, g, b) {
-            if (r + g + b < MIN_SAMPLE_BRIGHTNESS) return -1; // escuro demais pra confiar
+            if (r + g + b < MIN_SAMPLE_BRIGHTNESS) return -1;
             var c = chromaOf(r, g, b);
             var minDist = Infinity, bestIdx = -1;
             for (var i = 0; i < PALETTE_CHROMA.length; i++) {
                 var dist = chromaDistSq(c, PALETTE_CHROMA[i]);
                 if (dist < minDist) { minDist = dist; bestIdx = i; }
             }
-            if (minDist > CHROMA_REJECT_THRESHOLD) return -1; // longe demais de qualquer cor conhecida
+            if (minDist > CHROMA_REJECT_THRESHOLD) return -1;
             return bestIdx;
         }
 
         function getSampleIndexAt(data, W, H, cx, cy, corr) {
             var r = 0, g = 0, b = 0, n = 0;
-            var radius = 3;
+            var radius = 5;
             for (var dy = -radius; dy <= radius; dy++) {
                 for (var dx = -radius; dx <= radius; dx++) {
                     var px = Math.round(cx + dx), py = Math.round(cy + dy);
@@ -1141,10 +1030,6 @@
             }
             if (!n) return -1;
             var ar = r / n, ag = g / n, ab = b / n;
-            // Correct for a lighting/white-balance cast using the factor
-            // measured from the 3 tracking dots themselves — a known
-            // reference color sitting right next to the data, under the
-            // exact same light.
             if (corr) { ar *= corr.r; ag *= corr.g; ab *= corr.b; }
             return getClosestColorIndex(ar, ag, ab);
         }
@@ -1152,8 +1037,6 @@
         function scanEarFrame() {
             var video = document.getElementById('scannerVideo');
             if (!video.videoWidth) return;
-            // Downscale for speed — marker centroids/homography don't need
-            // full resolution, and this keeps blob detection fast per frame.
             var scale = Math.min(1, 480 / video.videoWidth);
             var w = Math.round(video.videoWidth * scale), h = Math.round(video.videoHeight * scale);
             var canvas = document.getElementById('scannerCaptureCanvas');
@@ -1171,7 +1054,7 @@
             var corners = pickThreeCorners(blobs);
             if (!corners) {
                 if (isUpload) mostrarResultadoLeitura({ title: "Não encontrei os 3 marcadores 😿", artist: "Garanta que os 3 pontinhos coloridos (2 em cima, 1 embaixo) estejam visíveis e bem iluminados", cover: defaultCover });
-                return; // câmera: continua tentando silenciosamente
+                return;
             }
 
             var affine = computeAffine(
@@ -1183,16 +1066,10 @@
                 return;
             }
 
-            // The 3 tracking dots are a known reference color photographed
-            // under the exact same light as the data right next to them.
-            // Comparing what they actually came out as to what they should
-            // be gives a per-channel correction that cancels out whatever
-            // color cast the lighting introduced — warm bulbs, cool daylight,
-            // a colored lamp, a yellowed phone screen, etc.
             var avgR = (corners.tl.avgR + corners.tr.avgR + corners.bc.avgR) / 3;
             var avgG = (corners.tl.avgG + corners.tr.avgG + corners.bc.avgG) / 3;
             var avgB = (corners.tl.avgB + corners.tr.avgB + corners.bc.avgB) / 3;
-            function clampCorr(f) { return Math.min(2.5, Math.max(0.4, f)); }
+            function clampCorr(f) { return Math.min(4.0, Math.max(0.2, f)); }
             var corr = {
                 r: clampCorr(FIDUCIAL_RGB.r / Math.max(1, avgR)),
                 g: clampCorr(FIDUCIAL_RGB.g / Math.max(1, avgG)),
@@ -1215,7 +1092,7 @@
             var trackId = decodeZaraCode(indices);
             if (trackId === null) {
                 if (isUpload) mostrarResultadoLeitura({ title: "Não consegui ler esse código 😿", artist: "Tente um ângulo ou distância diferente, com boa luz", cover: defaultCover });
-                return; // câmera: continua tentando silenciosamente
+                return;
             }
 
             closeScanner();
@@ -1281,16 +1158,12 @@
                     var canvas = document.createElement('canvas');
                     var ctx;
                     if (currentScanMode === 'fluffy') {
-                        // Um QR real detecta a si mesmo em qualquer resolução —
-                        // sem redimensionar/forçar em nenhum tamanho fixo.
                         canvas.width = img.naturalWidth;
                         canvas.height = img.naturalHeight;
                         ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0);
                         tryDecodeQrFromCanvas(canvas, ctx, true);
                     } else {
-                        // Mesmo pipeline de marcadores usado pela câmera —
-                        // reduzido a uma largura razoável só por desempenho.
                         var scale = Math.min(1, 900 / img.naturalWidth);
                         canvas.width = Math.round(img.naturalWidth * scale);
                         canvas.height = Math.round(img.naturalHeight * scale);
@@ -1345,7 +1218,6 @@
             document.getElementById('readModal').style.display = 'none';
         });
 
-        // --- PLAYER DE RÁDIO ---
         var audio = document.getElementById('audioStream');
         var playPauseBtn = document.getElementById('playPauseBtn');
         var iconContainer = document.getElementById('iconContainer');
