@@ -444,17 +444,21 @@
 
         // With the palette spaced as above, the closest any two colors (data
         // or fiducial) ever get to each other is ~0.06 squared chroma-distance.
-        // These thresholds sit comfortably below that gap, so real lighting/
-        // white-balance noise gets absorbed without two different colors
-        // ever being confused for one another.
-        var FIDUCIAL_CHROMA_TOLERANCE = 0.03;
-        var CHROMA_REJECT_THRESHOLD = 0.035;
+        // These thresholds sit below that gap, so real lighting/white-balance
+        // noise gets absorbed without two different colors ever being
+        // confused for one another. Widened from the original 0.03/0.035 to
+        // be more forgiving of imperfect live-camera lighting, while still
+        // leaving a safety margin under the 0.06 collision point.
+        var FIDUCIAL_CHROMA_TOLERANCE = 0.04;
+        var CHROMA_REJECT_THRESHOLD = 0.045;
 
         // Bounding rectangle around the 5 ears, in the card's own 300x480
-        // space. The 4 tracking dots sit exactly at its corners — this
-        // object is the single shared source of truth for both drawing them
-        // (buildEarCard) and locating them later (tryDecodeEarFromCanvas), so
-        // the two can't drift out of sync the way the old geometry did.
+        // space. The 3 tracking dots — top-left, top-right, and bottom-center,
+        // the same layout as a QR code's finder pattern — sit exactly at its
+        // top corners and bottom midpoint. This object is the single shared
+        // source of truth for both drawing them (buildEarCard) and locating
+        // them later (tryDecodeEarFromCanvas), so the two can't drift out of
+        // sync the way the old geometry did.
         var EAR_ZONE = { x0: 14, y0: 300, x1: 288, y1: 414 };
 
         function computeZaraChecksum(idDigits) {
@@ -490,7 +494,7 @@
 
         // The 15 sample points (5 ears x [left-half, right-half, accent dot]),
         // expressed as fractions (u,v) of EAR_ZONE. Normalized coordinates
-        // let us re-map every point through whatever homography the 4
+        // let us re-map every point through whatever affine transform the 3
         // tracking dots produce, regardless of the photo's scale/rotation.
         function buildEarSamplePointsNormalized() {
             var startX = 22, startY = 320, earW = 50, earH = 80, gap = 4;
@@ -812,10 +816,12 @@
                     ctx.stroke();
                 }
 
-                // The 4 fiducial tracking dots — position only, no data.
-                // White halo first for contrast against any background.
+                // The 3 fiducial tracking dots — position only, no data.
+                // Two on top, one centered on the bottom, like a QR code's
+                // finder pattern. White halo first for contrast against any
+                // background.
                 [[EAR_ZONE.x0, EAR_ZONE.y0], [EAR_ZONE.x1, EAR_ZONE.y0],
-                 [EAR_ZONE.x1, EAR_ZONE.y1], [EAR_ZONE.x0, EAR_ZONE.y1]].forEach(function(pt) {
+                 [(EAR_ZONE.x0 + EAR_ZONE.x1) / 2, EAR_ZONE.y1]].forEach(function(pt) {
                     ctx.beginPath();
                     ctx.arc(pt[0], pt[1], 10, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff';
@@ -859,7 +865,7 @@
             var isEar = mode === 'ear';
             document.getElementById('scannerModalTitle').innerText = isEar ? '📷 Ler ZaraCode' : '📷 Ler Fluffytag';
             document.getElementById('scannerModalText').innerText = isEar
-                ? 'A leitura é automática: mostre o card com os 4 pontinhos dos cantos visíveis e bem iluminados.'
+                ? 'A leitura é automática: mostre o card com os 3 pontinhos visíveis (2 em cima, 1 embaixo) e bem iluminados.'
                 : 'Toque em "Usar Câmera" e aponte para o QR — a leitura é automática. Ou envie uma foto.';
             document.getElementById('scannerModal').style.display = 'flex';
         }
@@ -894,7 +900,7 @@
 
                 video.onloadedmetadata = function() {
                     if (currentScanMode === 'ear') {
-                        // Fiducial-marker detection: locate the 4 tracking
+                        // Fiducial-marker detection: locate the 3 tracking
                         // dots anywhere in frame, at any angle/rotation.
                         cameraScanInterval = setInterval(scanEarFrame, 350);
                     } else {
@@ -952,11 +958,14 @@
         }
 
         // --- DETECÇÃO DO ZARACODE POR MARCADORES (câmera ou foto) ---
-        // No QR involved here. This finds the 4 fiducial dots by color,
-        // computes the perspective transform (homography) between their
-        // known positions and where they actually landed in the photo, and
-        // uses that to map every ear sample point precisely — regardless of
-        // how the card is rotated, tilted, or how far away it is.
+        // No QR involved here. This finds the 3 fiducial dots by color,
+        // computes the affine transform between their known positions and
+        // where they actually landed in the photo, and uses that to map
+        // every ear sample point precisely — regardless of how the card is
+        // rotated, scaled, or how far away it is. Three points (rather than
+        // four) is both easier to fit fully in frame on a live camera and
+        // cheaper/more stable to solve for — an affine fit only needs 3
+        // correspondences, versus 4 for a full perspective homography.
 
         function findFiducialBlobs(imgData, W, H) {
             var visited = new Uint8Array(W * H);
@@ -1006,7 +1015,7 @@
                         }
                     }
 
-                    if (count >= 12) {
+                    if (count >= 9) {
                         // avgR/G/B (the dot's *actual* photographed color) is
                         // kept so the caller can compare it against the known
                         // true fiducial color and derive a white-balance fix.
@@ -1021,28 +1030,45 @@
             return blobs;
         }
 
-        function pickFourCorners(blobs) {
-            if (blobs.length < 4) return null;
+        // Picks the 3 tracking-dot blobs and labels them tl / tr / bc
+        // (bottom-center), the same way a QR reader identifies its 3 finder
+        // squares — without assuming the card is roughly upright in frame.
+        function pickThreeCorners(blobs) {
+            if (blobs.length < 3) return null;
             var candidates = blobs.filter(function(b) {
                 var ratio = b.w / b.h;
                 return ratio > 0.35 && ratio < 2.8;
             });
-            if (candidates.length < 4) candidates = blobs;
+            if (candidates.length < 3) candidates = blobs;
 
             candidates.sort(function(a, b) { return b.count - a.count; });
-            var four = candidates.slice(0, 4);
-            if (four.length < 4) return null;
+            var three = candidates.slice(0, 3);
+            if (three.length < 3) return null;
 
-            var tl = four[0], tr = four[0], bl = four[0], br = four[0];
-            var minSum = Infinity, maxSum = -Infinity, minDiff = Infinity, maxDiff = -Infinity;
-            four.forEach(function(p) {
-                var sum = p.x + p.y, diff = p.x - p.y;
-                if (sum < minSum) { minSum = sum; tl = p; }
-                if (sum > maxSum) { maxSum = sum; br = p; }
-                if (diff > maxDiff) { maxDiff = diff; tr = p; }
-                if (diff < minDiff) { minDiff = diff; bl = p; }
+            // The two top dots sit a whole card-width apart, while either
+            // one to the bottom dot is a shorter diagonal — so whichever
+            // pair is mutually farthest apart is the top pair, regardless
+            // of how the card is rotated in frame.
+            var pairIdx = [[0, 1, 2], [0, 2, 1], [1, 2, 0]]; // [a, b, remaining]
+            var bestPair = null, bestDistSq = -1;
+            pairIdx.forEach(function(idx) {
+                var a = three[idx[0]], b = three[idx[1]];
+                var dx = a.x - b.x, dy = a.y - b.y;
+                var d = dx * dx + dy * dy;
+                if (d > bestDistSq) { bestDistSq = d; bestPair = idx; }
             });
-            return { tl: tl, tr: tr, br: br, bl: bl };
+            var a = three[bestPair[0]], b = three[bestPair[1]], bc = three[bestPair[2]];
+
+            // Orient a/b into tl/tr using the perpendicular of the a->b axis:
+            // whichever side of that axis the bottom dot falls on defines
+            // "down", which in turn tells us which of a/b is "left".
+            var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+            var ex = b.x - a.x, ey = b.y - a.y;
+            var cross = ex * (bc.y - my) - ey * (bc.x - mx);
+            var tl, tr;
+            if (cross > 0) { tl = a; tr = b; } else { tl = b; tr = a; }
+
+            return { tl: tl, tr: tr, bc: bc };
         }
 
         function solveLinearSystem(A, b) {
@@ -1066,21 +1092,27 @@
             return x;
         }
 
-        function computeHomography(src, dst) {
-            var A = [], b = [];
-            for (var i = 0; i < 4; i++) {
-                var x = src[i].x, y = src[i].y, xp = dst[i].x, yp = dst[i].y;
-                A.push([x, y, 1, 0, 0, 0, -x * xp, -y * xp]); b.push(xp);
-                A.push([0, 0, 0, x, y, 1, -x * yp, -y * yp]); b.push(yp);
-            }
-            var h = solveLinearSystem(A, b);
-            if (!h) return null;
-            return { h11: h[0], h12: h[1], h13: h[2], h21: h[3], h22: h[4], h23: h[5], h31: h[6], h32: h[7] };
+        // 3-point affine fit: solve for [a,b,c] / [d,e,f] such that
+        // x' = a*x + b*y + c and y' = d*x + e*y + f map each normalized
+        // src point onto its detected dst point. Needs only 3 correspondences
+        // (vs. 4 for a full perspective homography), which is exactly what
+        // 3 tracking dots give us — and is plenty for a flat card photographed
+        // at a normal angle.
+        function computeAffine(src, dst) {
+            function cloneRows(rows) { return rows.map(function(r) { return r.slice(); }); }
+            var baseA = [
+                [src[0].x, src[0].y, 1],
+                [src[1].x, src[1].y, 1],
+                [src[2].x, src[2].y, 1]
+            ];
+            var solX = solveLinearSystem(cloneRows(baseA), [dst[0].x, dst[1].x, dst[2].x]);
+            var solY = solveLinearSystem(cloneRows(baseA), [dst[0].y, dst[1].y, dst[2].y]);
+            if (!solX || !solY) return null;
+            return { a: solX[0], b: solX[1], c: solX[2], d: solY[0], e: solY[1], f: solY[2] };
         }
 
-        function applyHomography(H, x, y) {
-            var denom = H.h31 * x + H.h32 * y + 1;
-            return { x: (H.h11 * x + H.h12 * y + H.h13) / denom, y: (H.h21 * x + H.h22 * y + H.h23) / denom };
+        function applyAffine(M, x, y) {
+            return { x: M.a * x + M.b * y + M.c, y: M.d * x + M.e * y + M.f };
         }
 
         function getClosestColorIndex(r, g, b) {
@@ -1110,7 +1142,7 @@
             if (!n) return -1;
             var ar = r / n, ag = g / n, ab = b / n;
             // Correct for a lighting/white-balance cast using the factor
-            // measured from the 4 tracking dots themselves — a known
+            // measured from the 3 tracking dots themselves — a known
             // reference color sitting right next to the data, under the
             // exact same light.
             if (corr) { ar *= corr.r; ag *= corr.g; ab *= corr.b; }
@@ -1136,30 +1168,30 @@
             var imgData = ctx.getImageData(0, 0, W, H);
 
             var blobs = findFiducialBlobs(imgData, W, H);
-            var corners = pickFourCorners(blobs);
+            var corners = pickThreeCorners(blobs);
             if (!corners) {
-                if (isUpload) mostrarResultadoLeitura({ title: "Não encontrei os 4 marcadores 😿", artist: "Garanta que os 4 pontinhos coloridos dos cantos estejam visíveis e bem iluminados", cover: defaultCover });
+                if (isUpload) mostrarResultadoLeitura({ title: "Não encontrei os 3 marcadores 😿", artist: "Garanta que os 3 pontinhos coloridos (2 em cima, 1 embaixo) estejam visíveis e bem iluminados", cover: defaultCover });
                 return; // câmera: continua tentando silenciosamente
             }
 
-            var H_matrix = computeHomography(
-                [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
-                [corners.tl, corners.tr, corners.br, corners.bl]
+            var affine = computeAffine(
+                [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0.5, y: 1 }],
+                [corners.tl, corners.tr, corners.bc]
             );
-            if (!H_matrix) {
+            if (!affine) {
                 if (isUpload) mostrarResultadoLeitura({ title: "Não consegui calcular a posição do card 😿", artist: "Tente novamente com o card mais reto em relação à câmera", cover: defaultCover });
                 return;
             }
 
-            // The 4 tracking dots are a known reference color photographed
+            // The 3 tracking dots are a known reference color photographed
             // under the exact same light as the data right next to them.
             // Comparing what they actually came out as to what they should
             // be gives a per-channel correction that cancels out whatever
             // color cast the lighting introduced — warm bulbs, cool daylight,
             // a colored lamp, a yellowed phone screen, etc.
-            var avgR = (corners.tl.avgR + corners.tr.avgR + corners.br.avgR + corners.bl.avgR) / 4;
-            var avgG = (corners.tl.avgG + corners.tr.avgG + corners.br.avgG + corners.bl.avgG) / 4;
-            var avgB = (corners.tl.avgB + corners.tr.avgB + corners.br.avgB + corners.bl.avgB) / 4;
+            var avgR = (corners.tl.avgR + corners.tr.avgR + corners.bc.avgR) / 3;
+            var avgG = (corners.tl.avgG + corners.tr.avgG + corners.bc.avgG) / 3;
+            var avgB = (corners.tl.avgB + corners.tr.avgB + corners.bc.avgB) / 3;
             function clampCorr(f) { return Math.min(2.5, Math.max(0.4, f)); }
             var corr = {
                 r: clampCorr(FIDUCIAL_RGB.r / Math.max(1, avgR)),
@@ -1169,7 +1201,7 @@
 
             var indices = [], failed = 0, data = imgData.data;
             for (var i = 0; i < EAR_SAMPLE_POINTS_NORM.length; i++) {
-                var p = applyHomography(H_matrix, EAR_SAMPLE_POINTS_NORM[i].u, EAR_SAMPLE_POINTS_NORM[i].v);
+                var p = applyAffine(affine, EAR_SAMPLE_POINTS_NORM[i].u, EAR_SAMPLE_POINTS_NORM[i].v);
                 var idx = getSampleIndexAt(data, W, H, p.x, p.y, corr);
                 if (idx === -1) { failed++; idx = 0; }
                 indices.push(idx);
